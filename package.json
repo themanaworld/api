@@ -1,16 +1,25 @@
 {
-  "name": "tmw-api",
-  "version": "0.1.0",
-  "description": "TMW RESTful API",
-  "main": "server.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "The Mana World",
-  "license": "ISC",
-  "dependencies": {
-    "body-parser": "^1.18.2",
-    "express": "^4.16.3",
-    "mysql": "^2.15.0"
-  }
+    "name": "tmw-api",
+    "version": "0.1.0",
+    "description": "TMW RESTful API",
+    "author": "The Mana World",
+    "license": "CC0-1.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/themanaworld/api.git"
+    },
+    "bugs": {
+        "url": "https://github.com/themanaworld/api/issues"
+    },
+    "main": "server.js",
+    "private": true,
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "body-parser": "^1.18.2",
+        "express": "^4.16.3",
+        "mysql": "^2.15.0"
+    }
 }

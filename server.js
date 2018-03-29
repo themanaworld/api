@@ -5,13 +5,6 @@ const https = require("https");
 const config = require("./config.json");
 const api = express();
 
-const db = mysql.createConnection({
-    host     : config.sql.host,
-    user     : config.sql.user,
-    password : config.sql.password,
-    database : config.sql.database
-});
-
 const checkCaptcha = (req, res, next) => {
     const token = String(req.get("X-CAPTCHA-TOKEN"));
 
@@ -20,6 +13,7 @@ const checkCaptcha = (req, res, next) => {
             status: "error",
             error: "no token sent"
         });
+        console.info("a request with an empty token was received");
         return;
     }
 
@@ -33,6 +27,7 @@ const checkCaptcha = (req, res, next) => {
                     status: "error",
                     error: "captcha validation failed"
                 });
+                console.info("a request failed to validate");
                 return;
             }
 
@@ -44,6 +39,7 @@ const checkCaptcha = (req, res, next) => {
             status: "error",
             error: "recaptcha couldn't be reached"
         });
+        console.warn("reCaptcha couldn't be reached");
         return;
     })
 };
@@ -64,44 +60,58 @@ api.post("/api/account", (req, res) => {
             status: "error",
             error: "malformed request"
         });
+        console.info("a malformed request was received");
         return;
     }
 
-    let account = {
+    const account = {
         username: req.body.username,
         password: req.body.password,
         email: req.body.email || "a@a.com"
     };
 
-    db.connect();
-    db.query(`SELECT COUNT(*) FROM ${config.sql.table} WHERE USERNAME="${account.username}"`, (err, rows, fields) => {
+    const db = mysql.createConnection({
+        host     : config.sql.host,
+        user     : config.sql.user,
+        password : config.sql.password,
+        database : config.sql.database
+    });
+
+    db.connect(err => {
         if (err) {
             res.status(500).json({
                 status: "error",
                 error: "couldn't reach the database"
             });
-        } else if (rows[0].count > 0) {
-            res.status(409).json({
-                status: "error",
-                error: "already exists"
-            });
-        } else {
-            db.query(`INSERT INTO ${config.sql.table} (USERNAME, PASSWORD, EMAIL, GENDER) VALUES ("${account.username}", "${account.password}", "${account.email}", "N")`, (err, rows, fields) => {
-                if (err) {
+            console.warn("a connection with the database couldn't be established");
+            return;
+        }
+
+        db.query({sql: `INSERT INTO ${config.sql.table} (USERNAME, PASSWORD, EMAIL, GENDER) VALUES ("${account.username}", "${account.password}", "${account.email}", "N")`}, (err, rows, fields) => {
+            if (err) {
+                if (err.code == "ER_DUP_ENTRY") {
+                    res.status(409).json({
+                        status: "error",
+                        error: "already exists"
+                    });
+                    console.info("a request to create an already-existent account was received");
+                } else {
                     res.status(500).json({
                         status: "error",
                         error: "couldn't add the user"
                     });
-                } else {
-                    res.status(201).json({
-                        status: "success"
-                    });
+                    console.error("an unexpected sql error occured", err);
                 }
-            });
-        }
-    });
+            } else {
+                res.status(201).json({
+                    status: "success"
+                });
+                console.info(`an account was created: ${account.username}`);
+            }
 
-    db.close();
+            db.end();
+        });
+    });
 });
 
 
@@ -111,6 +121,7 @@ api.use((req, res, next) => {
         status: "error",
         error: "unknown endpoint"
     });
+    console.info("a request for an unknown endpoint was received");
 });
 
 api.set("trust proxy", "loopback"); // only allow localhost to communicate with the API
