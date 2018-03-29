@@ -1,0 +1,15 @@
+{
+    "port": 8080,
+
+    "sql": {
+        "host": "localhost",
+        "user": "db user",
+        "password": "db password",
+        "database": "db",
+        "table": "table"
+    },
+
+    "recaptcha": {
+        "secret": "recaptcha secret key"
+    }
+}
