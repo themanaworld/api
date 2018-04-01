@@ -2,7 +2,6 @@ const express = require("express");
 const mysql = require("mysql");
 const bodyParser = require("body-parser");
 const https = require("https");
-const config = require("./config.json");
 const api = express();
 
 const checkCaptcha = (req, res, next) => {
@@ -17,7 +16,7 @@ const checkCaptcha = (req, res, next) => {
         return;
     }
 
-    https.get(`https://www.google.com/recaptcha/api/siteverify?secret=${config.recaptcha.secret}&response=${token}`, (re) => {
+    https.get(`https://www.google.com/recaptcha/api/siteverify?secret=${process.env.npm_package_config_recaptcha_secret}&response=${token}`, (re) => {
         re.setEncoding("utf8");
         re.on("data", response => {
             const data = JSON.parse(response);
@@ -71,10 +70,10 @@ api.post("/api/account", (req, res) => {
     };
 
     const db = mysql.createConnection({
-        host     : config.sql.host,
-        user     : config.sql.user,
-        password : config.sql.password,
-        database : config.sql.database
+        host     : process.env.npm_package_config_sql_host,
+        user     : process.env.npm_package_config_sql_user,
+        password : process.env.npm_package_config_sql_password,
+        database : process.env.npm_package_config_sql_database
     });
 
     db.connect(err => {
@@ -87,7 +86,7 @@ api.post("/api/account", (req, res) => {
             return;
         }
 
-        db.query({sql: `INSERT INTO ${config.sql.table} (USERNAME, PASSWORD, EMAIL, GENDER) VALUES ("${account.username}", "${account.password}", "${account.email}", "N")`}, (err, rows, fields) => {
+        db.query({sql: `INSERT INTO ${process.env.npm_package_config_sql_table} (USERNAME, PASSWORD, EMAIL, GENDER) VALUES ("${account.username}", "${account.password}", "${account.email}", "N")`}, (err, rows, fields) => {
             if (err) {
                 if (err.code == "ER_DUP_ENTRY") {
                     res.status(409).json({
@@ -124,5 +123,10 @@ api.use((req, res, next) => {
     console.info("a request for an unknown endpoint was received");
 });
 
+if (process.env.npm_package_config_port === undefined) {
+    console.error("Please run this package with `npm start`");
+    process.exit(1);
+}
+
 api.set("trust proxy", "loopback"); // only allow localhost to communicate with the API
-api.listen(config.port, () => console.info(`Listening on port ${config.port}`));
+api.listen(process.env.npm_package_config_port, () => console.info(`Listening on port ${process.env.npm_package_config_port}`));

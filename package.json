@@ -4,6 +4,21 @@
     "description": "TMW RESTful API",
     "author": "The Mana World",
     "license": "CC0-1.0",
+    "config": {
+        "port": 8080,
+
+        "sql": {
+            "host": "localhost",
+            "user": "db user",
+            "password": "db password",
+            "database": "db",
+            "table": "table"
+        },
+
+        "recaptcha": {
+            "secret": "recaptcha secret key"
+        }
+    },
     "repository": {
         "type": "git",
         "url": "https://github.com/themanaworld/api.git"
