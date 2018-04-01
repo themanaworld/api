@@ -12,21 +12,21 @@ const checkCaptcha = (req, res, next) => {
             status: "error",
             error: "no token sent"
         });
-        console.info("a request with an empty token was received");
+        console.info("a request with an empty token was received", req.ip);
         return;
     }
 
-    https.get(`https://www.google.com/recaptcha/api/siteverify?secret=${process.env.npm_package_config_recaptcha_secret}&response=${token}`, (re) => {
+    https.get(`https://www.google.com/recaptcha/api/siteverify?secret=${process.env.npm_package_config_recaptcha_secret}&response=${token}`, re => {
         re.setEncoding("utf8");
         re.on("data", response => {
             const data = JSON.parse(response);
             if (!data.success) {
-                console.error(`recaptcha returned an error: ${JSON.stringify(data)}`);
+                console.error(`recaptcha returned an error: ${response}`);
                 res.status(403).json({
                     status: "error",
                     error: "captcha validation failed"
                 });
-                console.info("a request failed to validate");
+                console.info("a request failed to validate", req.ip);
                 return;
             }
 
@@ -59,7 +59,7 @@ api.post("/api/account", (req, res) => {
             status: "error",
             error: "malformed request"
         });
-        console.info("a malformed request was received");
+        console.info("a malformed request was received", req.ip, req.body);
         return;
     }
 
@@ -88,12 +88,12 @@ api.post("/api/account", (req, res) => {
 
         db.query({sql: `INSERT INTO ${process.env.npm_package_config_sql_table} (USERNAME, PASSWORD, EMAIL, GENDER) VALUES ("${account.username}", "${account.password}", "${account.email}", "N")`}, (err, rows, fields) => {
             if (err) {
-                if (err.code == "ER_DUP_ENTRY") {
+                if (err.code === "ER_DUP_ENTRY") {
                     res.status(409).json({
                         status: "error",
                         error: "already exists"
                     });
-                    console.info("a request to create an already-existent account was received");
+                    console.info("a request to create an already-existent account was received", req.ip, account.username);
                 } else {
                     res.status(500).json({
                         status: "error",
@@ -120,7 +120,7 @@ api.use((req, res, next) => {
         status: "error",
         error: "unknown endpoint"
     });
-    console.info("a request for an unknown endpoint was received");
+    console.info("a request for an unknown endpoint was received", req.ip, req.originalUrl);
 });
 
 if (process.env.npm_package_config_port === undefined) {
