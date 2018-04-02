@@ -6,6 +6,7 @@
     "license": "CC0-1.0",
     "config": {
         "port": 8080,
+        "timezone": "UTC",
 
         "sql": {
             "host": "localhost",
@@ -17,6 +18,11 @@
 
         "recaptcha": {
             "secret": "recaptcha secret key"
+        },
+
+        "tmwa" : {
+            "name": "The Mana World Legacy Server",
+            "url": "tmwa://server.themanaworld.org:6901"
         }
     },
     "repository": {

@@ -2,7 +2,30 @@ const express = require("express");
 const mysql = require("mysql");
 const bodyParser = require("body-parser");
 const https = require("https");
+const fs = require("fs");
 const api = express();
+
+const tmwa = {
+    status: "OfflineTemporarily",
+    num_online: 0,
+    interval: null,
+    poll: () => {
+        fs.readFile("./online.txt", "utf8", (err, data) => {
+            const lines = data.split("\n");
+            const last_online = Date.parse(lines[0].match(/\((.+)\)/)[1] + ` ${process.env.npm_package_config_timezone}`);
+
+            if (Date.now() - last_online < 30000) {
+                tmwa.status = "Online";
+                tmwa.num_online = lines[lines.length - 2].match(/([0-9]+) users are online./)[1];
+            } else {
+                tmwa.status = "OfflineTemporarily";
+                tmwa.num_online = 0;
+            }
+
+            setTimeout(tmwa.poll, 2000);
+        });
+    }
+};
 
 const checkCaptcha = (req, res, next) => {
     const token = String(req.get("X-CAPTCHA-TOKEN"));
@@ -43,7 +66,17 @@ const checkCaptcha = (req, res, next) => {
     })
 };
 
-
+api.get("/api/tmwa", (req, res) => {
+    res.append("Access-Control-Allow-Origin", "*"); // CORS ready
+    res.status(200).json({
+        "@context": "http://schema.org",
+        "@type": "GameServer",
+        name: process.env.npm_package_config_tmwa_name,
+        url: process.env.npm_package_config_tmwa_url,
+        playersOnline: tmwa.num_online,
+        serverStatus: tmwa.status,
+    });
+});
 
 api.use(checkCaptcha);
 api.use(bodyParser.json());
@@ -130,3 +163,4 @@ if (process.env.npm_package_config_port === undefined) {
 
 api.set("trust proxy", "loopback"); // only allow localhost to communicate with the API
 api.listen(process.env.npm_package_config_port, () => console.info(`Listening on port ${process.env.npm_package_config_port}`));
+tmwa.poll();
