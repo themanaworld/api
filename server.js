@@ -8,10 +8,17 @@ const api = express();
 const tmwa = {
     status: "OfflineTemporarily",
     num_online: 0,
-    interval: null,
+    timeout: null,
     poll: () => {
         fs.readFile("./online.txt", "utf8", (err, data) => {
             const lines = data.split("\n");
+
+            if (err || lines.length < 2) {
+                console.error("encountered an error while retrieving online.txt", err);
+                tmwa.timeout = setTimeout(tmwa.poll, 30000); // <= it failed, so check again later
+                return;
+            }
+
             const last_online = Date.parse(lines[0].match(/\((.+)\)/)[1] + ` ${process.env.npm_package_config_timezone}`);
 
             if (Date.now() - last_online < 30000) {
@@ -22,7 +29,7 @@ const tmwa = {
                 tmwa.num_online = 0;
             }
 
-            setTimeout(tmwa.poll, 2000);
+            tmwa.timeout = setTimeout(tmwa.poll, 2000);
         });
     }
 };
