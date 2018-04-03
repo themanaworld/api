@@ -22,8 +22,9 @@ const tmwa = {
             const last_online = Date.parse(lines[0].match(/\((.+)\)/)[1] + ` ${process.env.npm_package_config_timezone}`);
 
             if (Date.now() - last_online < 30000) {
+                const num = lines[lines.length - 2].match(/([0-9]+) users are online./);
                 tmwa.status = "Online";
-                tmwa.num_online = lines[lines.length - 2].match(/([0-9]+) users are online./)[1];
+                tmwa.num_online = num ? num[1] : 0;
             } else {
                 tmwa.status = "OfflineTemporarily";
                 tmwa.num_online = 0;
