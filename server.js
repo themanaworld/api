@@ -125,12 +125,6 @@ api.post("/api/account", (req, res) => {
         return;
     }
 
-    const account = {
-        username: req.body.username,
-        password: req.body.password,
-        email: req.body.email || "a@a.com"
-    };
-
     const db = mysql.createConnection({
         host     : process.env.npm_package_config_sql_host,
         user     : process.env.npm_package_config_sql_user,
@@ -148,14 +142,21 @@ api.post("/api/account", (req, res) => {
             return;
         }
 
-        db.query({sql: `INSERT INTO ${process.env.npm_package_config_sql_table} (USERNAME, PASSWORD, EMAIL, GENDER) VALUES ("${account.username}", "${account.password}", "${account.email}", "N")`}, (err, rows, fields) => {
+        const query_params = {
+            "USERNAME": req.body.username,
+            "PASSWORD": req.body.password,
+            "EMAIL": req.body.email || "a@a.com",
+            "GENDER": "N",
+        };
+
+        db.query(`INSERT INTO ${process.env.npm_package_config_sql_table} SET ?`, query_params, (err, rows, fields) => {
             if (err) {
                 if (err.code === "ER_DUP_ENTRY") {
                     res.status(409).json({
                         status: "error",
                         error: "already exists"
                     });
-                    console.info("a request to create an already-existent account was received", req.ip, account.username);
+                    console.info("a request to create an already-existent account was received", req.ip, query_params.USERNAME);
                     rate_limiting.add(req.ip);
                     setTimeout(() => rate_limiting.delete(req.ip), 2000);
                 } else {
@@ -169,7 +170,7 @@ api.post("/api/account", (req, res) => {
                 res.status(201).json({
                     status: "success"
                 });
-                console.info(`an account was created: ${account.username}`);
+                console.info(`an account was created: ${query_params.USERNAME}`);
                 rate_limiting.add(req.ip);
                 setTimeout(() => rate_limiting.delete(req.ip), 300000);
             }
