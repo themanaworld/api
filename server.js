@@ -1,6 +1,5 @@
 const express = require("express");
 const mysql = require("mysql");
-const bodyParser = require("body-parser");
 const https = require("https");
 const fs = require("fs");
 const api = express();
@@ -114,7 +113,7 @@ api.get("/api/tmwa", (req, res) => {
 
 api.use(checkRateLimiting);
 api.use(checkCaptcha);
-api.use(bodyParser.json());
+api.use(express.json());
 api.post("/api/account", (req, res) => {
     if (!req.body || !Reflect.has(req.body, "username") ||
         !Reflect.has(req.body, "password") || !Reflect.has(req.body, "email") ||
