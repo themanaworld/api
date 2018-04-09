@@ -7,6 +7,14 @@ const api = express();
 
 const rate_limiting = new Set();
 
+const register_db = mysql.createPool({
+    connectionLimit: 10,
+    host           : process.env.npm_package_config_sql_host,
+    user           : process.env.npm_package_config_sql_user,
+    password       : process.env.npm_package_config_sql_password,
+    database       : process.env.npm_package_config_sql_database
+});
+
 const tmwa = {
     status: "OfflineTemporarily",
     num_online: 0,
@@ -132,7 +140,7 @@ api.post("/api/account", (req, res) => {
         database : process.env.npm_package_config_sql_database
     });
 
-    db.connect(err => {
+    register_db.getConnection((err, db) => {
         if (err) {
             res.status(500).json({
                 status: "error",
@@ -175,7 +183,7 @@ api.post("/api/account", (req, res) => {
                 setTimeout(() => rate_limiting.delete(req.ip), 300000);
             }
 
-            db.end();
+            db.release(); // return this connection to the pool
         });
     });
 });
