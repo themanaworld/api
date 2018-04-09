@@ -7,7 +7,6 @@
     "config": {
         "port": 8080,
         "timezone": "UTC",
-
         "sql": {
             "host": "localhost",
             "user": "db user",
@@ -15,12 +14,10 @@
             "database": "db",
             "table": "table"
         },
-
         "recaptcha": {
             "secret": "recaptcha secret key"
         },
-
-        "tmwa" : {
+        "tmwa": {
             "name": "The Mana World Legacy Server",
             "url": "tmwa://server.themanaworld.org:6901"
         }
@@ -35,12 +32,16 @@
     "main": "server.js",
     "private": true,
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1",
+        "test": "node_modules/nsp/bin/nsp check",
         "start": "node server.js"
     },
     "dependencies": {
         "body-parser": "^1.18.2",
         "express": "^4.16.3",
-        "mysql": "^2.15.0"
+        "mysql": "^2.15.0",
+        "safe-regex": "^1.1.0"
+    },
+    "devDependencies": {
+        "nsp": "^3.2.1"
     }
 }

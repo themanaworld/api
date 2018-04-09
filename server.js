@@ -5,6 +5,8 @@ const https = require("https");
 const fs = require("fs");
 const api = express();
 
+const rate_limiting = new Set();
+
 const tmwa = {
     status: "OfflineTemporarily",
     num_online: 0,
@@ -35,6 +37,18 @@ const tmwa = {
     }
 };
 
+const checkRateLimiting = (req, res, next) => {
+    if (rate_limiting.has(req.ip)) {
+        res.status(429).json({
+            status: "error",
+            error: "too many requests"
+        });
+    } else {
+        next();
+    }
+    return;
+};
+
 const checkCaptcha = (req, res, next) => {
     const token = String(req.get("X-CAPTCHA-TOKEN"));
 
@@ -44,6 +58,8 @@ const checkCaptcha = (req, res, next) => {
             error: "no token sent"
         });
         console.info("a request with an empty token was received", req.ip);
+        rate_limiting.add(req.ip);
+        setTimeout(() => rate_limiting.delete(req.ip), 300000);
         return;
     }
 
@@ -58,6 +74,8 @@ const checkCaptcha = (req, res, next) => {
                     error: "captcha validation failed"
                 });
                 console.info("a request failed to validate", req.ip);
+                rate_limiting.add(req.ip);
+                setTimeout(() => rate_limiting.delete(req.ip), 300000);
                 return;
             }
 
@@ -86,6 +104,7 @@ api.get("/api/tmwa", (req, res) => {
     });
 });
 
+api.use(checkRateLimiting);
 api.use(checkCaptcha);
 api.use(bodyParser.json());
 api.post("/api/account", (req, res) => {
@@ -101,6 +120,8 @@ api.post("/api/account", (req, res) => {
             error: "malformed request"
         });
         console.info("a malformed request was received", req.ip, req.body);
+        rate_limiting.add(req.ip);
+        setTimeout(() => rate_limiting.delete(req.ip), 300000);
         return;
     }
 
@@ -135,6 +156,8 @@ api.post("/api/account", (req, res) => {
                         error: "already exists"
                     });
                     console.info("a request to create an already-existent account was received", req.ip, account.username);
+                    rate_limiting.add(req.ip);
+                    setTimeout(() => rate_limiting.delete(req.ip), 2000);
                 } else {
                     res.status(500).json({
                         status: "error",
@@ -147,6 +170,8 @@ api.post("/api/account", (req, res) => {
                     status: "success"
                 });
                 console.info(`an account was created: ${account.username}`);
+                rate_limiting.add(req.ip);
+                setTimeout(() => rate_limiting.delete(req.ip), 300000);
             }
 
             db.end();
@@ -170,5 +195,6 @@ if (process.env.npm_package_config_port === undefined) {
 }
 
 api.set("trust proxy", "loopback"); // only allow localhost to communicate with the API
+api.disable("x-powered-by"); // we don't need this header
 api.listen(process.env.npm_package_config_port, () => console.info(`Listening on port ${process.env.npm_package_config_port}`));
 tmwa.poll();
