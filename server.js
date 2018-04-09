@@ -112,7 +112,7 @@ api.post("/api/account", (req, res) => {
         !Reflect.has(req.body, "password") || !Reflect.has(req.body, "email") ||
         !req.body.username.match(/^[a-zA-Z0-9]{4,23}$/) ||
         !req.body.password.match(/^[a-zA-Z0-9]{4,23}$/) ||
-        !req.body.email.match(/^|(?:[a-zA-Z0-9.$&+=_~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*)$/) ||
+        !req.body.email.match(/^$|^(?:[a-zA-Z0-9.$&+=_~-]{1,34}@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,35}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,34}[a-zA-Z0-9])?){0,9})$/) ||
         req.body.email.length >= 40)
     {
         res.status(400).json({
