@@ -1,6 +1,5 @@
 const express = require("express"); // from npm registry
 const fs = require("fs"); // built-in
-const poll_symbol = Symbol("TMWA.poll"); // private method
 
 const middlewares = {
     account: require("./middlewares/account.js"),
