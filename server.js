@@ -59,7 +59,7 @@ const checkRateLimiting = (req, res, next) => {
 const checkCaptcha = (req, res, next) => {
     const token = String(req.get("X-CAPTCHA-TOKEN"));
 
-    if (!token.match(/^[a-zA-Z0-9-_]{8,}$/)) {
+    if (!token.match(/^[a-zA-Z0-9-_]{30,60}$/)) {
         res.status(403).json({
             status: "error",
             error: "no token sent"
