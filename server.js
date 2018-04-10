@@ -56,7 +56,7 @@ const checkRateLimiting = (req, res, next) => {
     return;
 };
 
-const checkCaptcha = (req, res, next) => {
+const checkCaptcha = (req, res) => {
     const token = String(req.get("X-CAPTCHA-TOKEN") || "");
 
     if (!token.match(/^[a-zA-Z0-9-_]{30,60}$/)) {
@@ -67,7 +67,7 @@ const checkCaptcha = (req, res, next) => {
         console.info("a request with an empty token was received", req.ip);
         rate_limiting.add(req.ip);
         setTimeout(() => rate_limiting.delete(req.ip), 300000);
-        return;
+        return false;
     }
 
     https.get(`https://www.google.com/recaptcha/api/siteverify?secret=${process.env.npm_package_config_recaptcha_secret}&response=${token}`, re => {
@@ -83,10 +83,10 @@ const checkCaptcha = (req, res, next) => {
                 console.info("a request failed to validate", req.ip);
                 rate_limiting.add(req.ip);
                 setTimeout(() => rate_limiting.delete(req.ip), 300000);
-                return;
+                return false;
             }
 
-            next(); // challenge passed, so process the request
+            return true; // challenge passed, so process the request
         });
     }).on("error", error => {
         console.error(error);
@@ -95,7 +95,7 @@ const checkCaptcha = (req, res, next) => {
             error: "recaptcha couldn't be reached"
         });
         console.warn("reCaptcha couldn't be reached");
-        return;
+        return false;
     })
 };
 
@@ -112,9 +112,10 @@ api.get("/api/tmwa", (req, res) => {
 });
 
 api.use(checkRateLimiting);
-api.use(checkCaptcha);
 api.use(express.json());
 api.post("/api/account", (req, res) => {
+    if (checkCaptcha(req, res) !== true) return;
+
     if (!req.body || !Reflect.has(req.body, "username") ||
         !Reflect.has(req.body, "password") || !Reflect.has(req.body, "email") ||
         !req.body.username.match(/^[a-zA-Z0-9]{4,23}$/) ||
