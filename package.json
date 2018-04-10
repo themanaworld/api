@@ -1,6 +1,6 @@
 {
     "name": "tmw-api",
-    "version": "0.1.2",
+    "version": "1.0.0",
     "description": "TMW RESTful API",
     "author": "The Mana World",
     "license": "CC0-1.0",
@@ -29,11 +29,11 @@
     "bugs": {
         "url": "https://github.com/themanaworld/api/issues"
     },
-    "main": "server.js",
+    "main": "src/api.js",
     "private": true,
     "scripts": {
         "test": "node_modules/nsp/bin/nsp check",
-        "start": "node server.js"
+        "start": "node ."
     },
     "dependencies": {
         "express": "^4.16.3",
