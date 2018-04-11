@@ -23,7 +23,7 @@ module.exports = exports = class TMWA {
         this.router.get("/server", middlewares.server);
 
         this.router.all("/account", rate_limit, challenge); // flood limit + captcha
-        this.router.post("/account", express.json(), middlewares.account);
+        this.router.all("/account", express.json(), middlewares.account);
 
         tmwa_poll(this); // first heartbeat
 
