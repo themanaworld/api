@@ -10,7 +10,6 @@ module.exports = exports = (req, res, next) => {
             status: "error",
             error: "malformed request"
         });
-        console.info("a malformed request was received", req.ip, req.body);
         req.app.locals.rate_limiting.add(req.ip);
         setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
         return;
@@ -22,7 +21,7 @@ module.exports = exports = (req, res, next) => {
                 status: "error",
                 error: "couldn't reach the database"
             });
-            console.warn("a connection with the database couldn't be established");
+            console.warn("TMWA.account: a connection with the database couldn't be established");
             return;
         }
 
@@ -40,7 +39,6 @@ module.exports = exports = (req, res, next) => {
                         status: "error",
                         error: "already exists"
                     });
-                    console.info("a request to create an already-existent account was received", req.ip, query_params.USERNAME);
                     req.app.locals.rate_limiting.add(req.ip);
                     setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 2000);
                 } else {
@@ -48,13 +46,13 @@ module.exports = exports = (req, res, next) => {
                         status: "error",
                         error: "couldn't add the user"
                     });
-                    console.error("an unexpected sql error occured", err);
+                    console.error("TMWA.account: an unexpected sql error occured: %s", err.code);
                 }
             } else {
                 res.status(201).json({
                     status: "success"
                 });
-                console.info(`an account was created: ${query_params.USERNAME}`);
+                console.info("TMWA.account: an account was created: %s [%s]", query_params.USERNAME, req.ip);
                 req.app.locals.rate_limiting.add(req.ip);
                 setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
             }

@@ -41,7 +41,6 @@ const checkCaptcha = (req, res, next) => {
             status: "error",
             error: "no token sent"
         });
-        console.info("a request with an empty token was received", req.ip);
         req.app.locals.rate_limiting.add(req.ip);
         setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
         return false;
@@ -51,13 +50,17 @@ const checkCaptcha = (req, res, next) => {
         re.setEncoding("utf8");
         re.on("data", response => {
             const data = JSON.parse(response);
-            if (!data.success) {
-                console.error(`recaptcha returned an error: ${response}`);
+            if (!Reflect.has(data, "success") || data.success !== true) {
+                if (Reflect.has(data, "error-codes")) {
+                    const error_codes = data["error-codes"].toString();
+                    if (error_codes !== "invalid-input-response") {
+                        console.error("reCAPTCHA returned an error: %s", error_codes);
+                    }
+                }
                 res.status(403).json({
                     status: "error",
                     error: "captcha validation failed"
                 });
-                console.info("a request failed to validate", req.ip);
                 req.app.locals.rate_limiting.add(req.ip);
                 setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
                 return false;
@@ -69,9 +72,9 @@ const checkCaptcha = (req, res, next) => {
         console.error(error);
         res.status(403).json({
             status: "error",
-            error: "recaptcha couldn't be reached"
+            error: "reCAPTCHA couldn't be reached"
         });
-        console.warn("reCaptcha couldn't be reached");
+        console.warn("reCAPTCHA couldn't be reached");
         return false;
     })
 };
@@ -119,9 +122,8 @@ api.use((req, res, next) => {
         status: "error",
         error: "unknown endpoint"
     });
-    console.info("a request for an unknown endpoint was received", req.ip, req.originalUrl);
 });
 
 api.set("trust proxy", "loopback"); // only allow localhost to communicate with the API
 api.disable("x-powered-by"); // we don't need this header
-api.listen(process.env.npm_package_config_port, () => console.info(`Listening on port ${process.env.npm_package_config_port}`));
+api.listen(process.env.npm_package_config_port, () => console.info("Listening on port %d", process.env.npm_package_config_port));

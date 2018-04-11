@@ -22,10 +22,8 @@ module.exports = exports = class TMWA {
 
         this.router.get("/server", middlewares.server);
 
-        this.router.all("/account", rate_limit); // filter out the flood
-        this.router.all("/account", challenge); // require a captcha
-        this.router.use("/account", express.json()); // parse the body as json
-        this.router.post("/account", middlewares.account);
+        this.router.all("/account", rate_limit, challenge); // flood limit + captcha
+        this.router.post("/account", express.json(), middlewares.account);
 
         tmwa_poll(this); // first heartbeat
 
@@ -39,7 +37,7 @@ const tmwa_poll = (_this) => {
         const lines = data.split("\n");
 
         if (err || lines.length < 2) {
-            console.error("encountered an error while retrieving online.txt", err);
+            console.error("TMWA: encountered an error while retrieving online.txt", err);
             _this.timeout = setTimeout(() => tmwa_poll(_this), 30000); // <= it failed, so check again later
             return;
         }
