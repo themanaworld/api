@@ -7,14 +7,38 @@ if (process.env.npm_package_config_port === undefined) {
     process.exit(1);
 }
 
+const send_hook = (msg) => {
+    const req = new Request(process.env.npm_package_config_logger_webhook, {
+        method: "POST",
+        cache: "no-cache",
+        redirect: "follow",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            content: msg,
+        }),
+    });
 
+    fetch(req);
+    console.log(msg);
+};
+
+const logger = {
+    log: msg => send_hook(`${msg}`),
+    info: msg => send_hook(`ℹ ${msg}`),
+    warn: msg => send_hook(`⚠ ${msg}`),
+    error: msg => send_hook(`❌ ${msg}`),
+};
 
 // config common to all routers:
 api.locals = Object.assign({
     rate_limiting: new Set(), // XXX: or do we want routers to each have their own rate limiter?
     mailer: {
         from: process.env.npm_package_config_mailer_from,
-    }
+    },
+    logger: logger,
 }, api.locals);
 
 

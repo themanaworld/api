@@ -1,6 +1,6 @@
 {
     "name": "tmw-api",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "description": "TMW RESTful API",
     "author": "The Mana World",
     "license": "CC0-1.0",
@@ -18,6 +18,9 @@
         },
         "mailer": {
             "from": "The Mana World <noreply@themanaworld.org>"
+        },
+        "logger": {
+            "webhook": ""
         }
     },
     "repository": {

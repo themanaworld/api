@@ -142,7 +142,7 @@ const create_account = (req, res, next) => {
             res.status(201).json({
                 status: "success"
             });
-            console.info("TMWA.account: an account was created: %s [%s]", req.body.username, req.ip);
+            req.app.locals.logger.info("TMWA.account: an account was created: %s [%s]", req.body.username, req.ip);
             req.app.locals.rate_limiting.add(req.ip);
             setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
 
@@ -155,7 +155,7 @@ const create_account = (req, res, next) => {
                 subject: "The Mana World account registration",
                 text: `Your account (\"${req.body.username}\") was created successfully.\nHave fun playing The Mana World!`
             }, (err, info) => {
-                console.info("TMWA.account: sent account creation email: %s %s", req.body.username, info.messageId);
+                req.app.locals.logger.info("TMWA.account: sent account creation email: %s %s", req.body.username, info.messageId);
             });
         });
         child.stdin.end();
