@@ -201,7 +201,7 @@ const reset_password = async (req, res, next) => {
         const uuid = uuidv4();
         transporter.sendMail({
             from: req.app.locals.mailer.from,
-            to: email,
+            to: req.body.email,
             subject: "The Mana World password reset",
             text: "You are receiving this email because someone (you?) has requested a password reset on The Mana World"+
                    "with your email address.\nIf you did not request a password reset please ignore this email.\n\n"+
@@ -306,9 +306,9 @@ const reset_password = async (req, res, next) => {
 
                 transporter.sendMail({
                     from: req.app.locals.mailer.from,
-                    to: email,
+                    to: account.email,
                     subject: "The Mana World password reset",
-                    text: `You have successfully reset the password for account \"${req.body.username}\".\nHave fun playing The Mana World!`
+                    text: `You have successfully reset the password for account \"${req.body.username}\".\nHave fun playing The Mana World!\n\n⚠ If you did not perform this password reset, please contact us ASAP to secure your account.`
                 }, (err, info) => {
                     req.app.locals.logger.info(`TMWA.account: sent password reset confirmation email: ${req.body.username} ${info.messageId}`);
                 });
