@@ -182,6 +182,22 @@ const reset_password = async (req, res, next) => {
             return;
         }
 
+        for (const [u, op] of pending_operations) {
+            if (op.type !== "reset")
+                continue;
+            for (const account of op.accounts) {
+                if (account.email === req.body.email) {
+                    res.status(429).json({
+                        status: "error",
+                        error: "operation already pending"
+                    });
+                    req.app.locals.rate_limiting.add(req.ip);
+                    setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 5000);
+                    return;
+                }
+            }
+        }
+
         const uuid = uuidv4();
         transporter.sendMail({
             from: req.app.locals.mailer.from,
@@ -258,7 +274,7 @@ const reset_password = async (req, res, next) => {
         return;
     }
 
-    for (account of pending_operations.get(req.body.code).accounts) {
+    for (const account of pending_operations.get(req.body.code).accounts) {
         if (account.name === req.body.username) {
             pending_operations.delete(req.body.code);
             const child = execFile(`${req.app.locals.tmwa.home}/.local/bin/tmwa-admin`, [], {
@@ -281,7 +297,7 @@ const reset_password = async (req, res, next) => {
                     return;
                 }
 
-                res.status(201).json({
+                res.status(200).json({
                     status: "success"
                 });
                 req.app.locals.logger.info(`TMWA.account: password has been reset: ${req.body.username} [${req.ip}]`);
