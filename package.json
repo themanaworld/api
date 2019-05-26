@@ -1,6 +1,6 @@
 {
     "name": "tmw-api",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "description": "TMW RESTful API",
     "author": "The Mana World",
     "license": "CC0-1.0",
@@ -14,7 +14,8 @@
             "name": "The Mana World Legacy Server",
             "url": "tmwa://server.themanaworld.org:6901",
             "root": "/mnt/tmwAthena/tmwa-server-data",
-            "home": "/home/tmw"
+            "home": "/home/tmw",
+            "reset": "https://www.themanaworld.org/recover/password/#"
         },
         "mailer": {
             "from": "The Mana World <noreply@themanaworld.org>"

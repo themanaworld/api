@@ -123,6 +123,7 @@ const tmwa_router = new (require("./routers/tmwa"))({
     url: process.env.npm_package_config_tmwa_url,
     root: process.env.npm_package_config_tmwa_root,
     home: process.env.npm_package_config_tmwa_home,
+    reset: process.env.npm_package_config_tmwa_reset,
 }, api, checkCaptcha, checkRateLimiting);
 
 global_router.use("/tmwa", tmwa_router);

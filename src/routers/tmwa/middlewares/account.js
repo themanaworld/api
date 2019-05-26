@@ -169,13 +169,47 @@ const reset_password = async (req, res, next) => {
         req.body.email.match(/^(?:[a-zA-Z0-9.$&+=_~-]{1,34}@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,35}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,34}[a-zA-Z0-9])?){0,9})$/) &&
         req.body.email.length >= 3 && req.body.email.length < 40 &&
         req.body.email !== "a@a.com") {
-        // recover by email (currently unsupported)
-        res.status(501).json({
-            status: "error",
-            error: "not yet implemented"
+
+        const accounts = await findAccountsByEmail(req.body.email);
+
+        if (accounts.size < 1) {
+            res.status(404).json({
+                status: "error",
+                error: "no accounts found"
+            });
+            req.app.locals.rate_limiting.add(req.ip);
+            setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 8000);
+            return;
+        }
+
+        const uuid = uuidv4();
+        transporter.sendMail({
+            from: req.app.locals.mailer.from,
+            to: email,
+            subject: "The Mana World password reset",
+            text: "You are receiving this email because someone (you?) has requested a password reset on The Mana World"+
+                   "with your email address.\nIf you did not request a password reset please ignore this email.\n\n"+
+                   "The following accounts are associated with this email address:\n" + account_names + "\n\n"+
+                   "To proceed with the password reset:\n" + `${req.app.locals.tmwa.reset}${uuid}`
+        }, (err, info) => {
+            pending_operations.set(uuid, {
+                type: "reset",
+                accounts: accounts,
+                initiated: Date.now(),
+                ip: req.ip,
+                timeout: setTimeout(() => pending_operations.delete(uuid), 3600000), // 60 minutes
+            });
+            res.status(200).json({
+                status: "success"
+            });
+            req.app.locals.logger.info(`TMWA.account: initiated password reset: ${info.messageId} [${req.ip}]`);
         });
+
+        req.app.locals.rate_limiting.add(req.ip);
+        setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 8000);
         return;
     } else if (req.body && Reflect.has(req.body, "username") &&
+        !Reflect.has(req.body, "password") &&
         req.body.username.match(/^[a-zA-Z0-9]{4,23}$/)) {
         // recover by username (currently unsupported)
         res.status(501).json({
@@ -186,7 +220,9 @@ const reset_password = async (req, res, next) => {
     }
 
     if (!req.body || !Reflect.has(req.body, "password") ||
+        !Reflect.has(req.body, "username") ||
         !Reflect.has(req.body, "code") ||
+        !req.body.username.match(/^[a-zA-Z0-9]{4,23}$/) ||
         !req.body.password.match(/^[a-zA-Z0-9]{4,23}$/) ||
         !req.body.code.match(/^[a-zA-Z0-9-_]{6,128}$/))
     {
@@ -200,6 +236,81 @@ const reset_password = async (req, res, next) => {
     }
 
     // actual reset happens here
+    if (!pending_operations.has(req.body.code)) {
+        res.status(408).json({
+            status: "error",
+            error: "request expired"
+        });
+        req.app.locals.rate_limiting.add(req.ip);
+        setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
+        return;
+    }
+
+    if (pending_operations.get(req.body.code).type !== "reset") {
+        res.status(400).json({
+            status: "error",
+            error: "invalid type"
+        });
+        req.app.locals.rate_limiting.add(req.ip);
+        setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
+        pending_operations.delete(req.body.code);
+        req.app.locals.logger.warn(`TMWA.account: attempted reset account with invalid uuid: ${req.body.username} [${req.ip}]`);
+        return;
+    }
+
+    for (account of pending_operations.get(req.body.code).accounts) {
+        if (account.name === req.body.username) {
+            pending_operations.delete(req.body.code);
+            const child = execFile(`${req.app.locals.tmwa.home}/.local/bin/tmwa-admin`, [], {
+                cwd: `${req.app.locals.tmwa.root}/login/`,
+                env: {
+                    LD_LIBRARY_PATH: `${req.app.locals.tmwa.home}/.local/lib`,
+                }
+            });
+
+            child.stdin.write(`password ${req.body.username} ${req.body.password}\n`);
+            child.stderr.on("data", data => {
+                console.error("TMWA.account: an unexpected tmwa-admin error occured: %s", data);
+                return;
+            });
+            child.stdout.on("data", data => {
+                if (!data.includes("successfully")) {
+                    if (!data.includes("have a connection"))
+                        console.error("TMWA.account: an unexpected tmwa-admin error occured: %s", data);
+                    child.kill();
+                    return;
+                }
+
+                res.status(201).json({
+                    status: "success"
+                });
+                req.app.locals.logger.info(`TMWA.account: password has been reset: ${req.body.username} [${req.ip}]`);
+                req.app.locals.rate_limiting.add(req.ip);
+                setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
+
+                transporter.sendMail({
+                    from: req.app.locals.mailer.from,
+                    to: email,
+                    subject: "The Mana World password reset",
+                    text: `You have successfully reset the password for account \"${req.body.username}\".\nHave fun playing The Mana World!`
+                }, (err, info) => {
+                    req.app.locals.logger.info(`TMWA.account: sent password reset confirmation email: ${req.body.username} ${info.messageId}`);
+                });
+            });
+            child.stdin.end();
+            return;
+        }
+    }
+
+    res.status(401).json({
+        status: "error",
+        error: "foreign account"
+    });
+    req.app.locals.rate_limiting.add(req.ip);
+    setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
+    pending_operations.delete(req.body.code);
+    req.app.locals.logger.warn(`TMWA.account: attempted reset account not owned by user: ${req.body.username} [${req.ip}]`);
+    return;
 };
 
 
