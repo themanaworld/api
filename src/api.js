@@ -1,4 +1,5 @@
 const express = require("express"); // from npm registry
+const Fetch = require("node-fetch"); // from npm registry
 const https = require("https"); // built-in
 const api = express();
 
@@ -8,7 +9,7 @@ if (process.env.npm_package_config_port === undefined) {
 }
 
 const send_hook = (msg) => {
-    const req = new Request(process.env.npm_package_config_logger_webhook, {
+    Fetch(process.env.npm_package_config_logger_webhook, {
         method: "POST",
         cache: "no-cache",
         redirect: "follow",
@@ -21,7 +22,6 @@ const send_hook = (msg) => {
         }),
     });
 
-    fetch(req);
     console.log(msg);
 };
 
