@@ -1,5 +1,4 @@
 const express = require("express"); // from npm registry
-const mysql = require("mysql"); // from npm registry
 const https = require("https"); // built-in
 const api = express();
 
@@ -13,6 +12,9 @@ if (process.env.npm_package_config_port === undefined) {
 // config common to all routers:
 api.locals = Object.assign({
     rate_limiting: new Set(), // XXX: or do we want routers to each have their own rate limiter?
+    mailer: {
+        from: process.env.npm_package_config_mailer_from,
+    }
 }, api.locals);
 
 
@@ -95,16 +97,8 @@ const tmwa_router = new (require("./routers/tmwa"))({
     timezone: process.env.npm_package_config_timezone,
     name: process.env.npm_package_config_tmwa_name,
     url: process.env.npm_package_config_tmwa_url,
-    db_pool: mysql.createPool({
-        connectionLimit: 10,
-        host           : process.env.npm_package_config_sql_host,
-        user           : process.env.npm_package_config_sql_user,
-        password       : process.env.npm_package_config_sql_password,
-        database       : process.env.npm_package_config_sql_database
-    }),
-    db_tables: {
-        register: process.env.npm_package_config_sql_table,
-    },
+    root: process.env.npm_package_config_tmwa_root,
+    home: process.env.npm_package_config_tmwa_home,
 }, api, checkCaptcha, checkRateLimiting);
 
 global_router.use("/tmwa", tmwa_router);
