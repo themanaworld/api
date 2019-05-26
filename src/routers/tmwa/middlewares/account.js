@@ -199,15 +199,16 @@ const reset_password = async (req, res, next) => {
         }
 
         let account_names = "";
-        for (ac of accounts)
+        for (const ac of accounts) {
             account_names += `${ac.name}\n`;
+        }
 
         const uuid = uuidv4();
         transporter.sendMail({
             from: req.app.locals.mailer.from,
             to: req.body.email,
             subject: "The Mana World password reset",
-            text: "You are receiving this email because someone (you?) has requested a password reset on The Mana World"+
+            text: "You are receiving this email because someone (you?) has requested a password reset on The Mana World "+
                    "with your email address.\nIf you did not request a password reset please ignore this email.\n\n"+
                    "The following accounts are associated with this email address:\n" + account_names + "\n"+
                    "To proceed with the password reset:\n" + `${req.app.locals.tmwa.reset}${uuid}`
