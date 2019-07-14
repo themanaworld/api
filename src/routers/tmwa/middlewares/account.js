@@ -2,7 +2,6 @@
 "use strict";
 const uuidv4 = require("uuid/v4");
 const execFile = require("child_process").execFile;
-const spawn = require("child_process").spawn;
 const ripgrep = require("ripgrep-bin");
 const nodemailer = require("nodemailer");
 
