@@ -8,4 +8,5 @@ module.exports = exports = (req, res, next) => {
         playersOnline: req.app.locals.tmwa.num_online,
         serverStatus: req.app.locals.tmwa.status,
     });
+    req.app.locals.cooldown(req, 500);
 };

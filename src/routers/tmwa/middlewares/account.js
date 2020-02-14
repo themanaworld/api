@@ -100,8 +100,7 @@ const create_account = (req, res, next) => {
             status: "error",
             error: "malformed request"
         });
-        req.app.locals.rate_limiting.add(req.ip);
-        setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
+        req.app.locals.cooldown(req, 300000);
         return;
     }
 
@@ -111,8 +110,7 @@ const create_account = (req, res, next) => {
                 status: "error",
                 error: "already exists"
             });
-            req.app.locals.rate_limiting.add(req.ip);
-            setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 2000);
+            req.app.locals.cooldown(req, 2000);
             return;
         }
 
@@ -141,9 +139,8 @@ const create_account = (req, res, next) => {
             res.status(201).json({
                 status: "success"
             });
-            req.app.locals.logger.info(`TMWA.account: an account was created: ${req.body.username} [${req.ip}]`);
-            req.app.locals.rate_limiting.add(req.ip);
-            setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
+            req.app.locals.logger.info(`TMWA.account: a Legacy account was created: ${req.body.username} [${req.ip}]`);
+            req.app.locals.cooldown(req, 300000);
 
             if (email === "a@a.com")
                 return;
@@ -153,9 +150,7 @@ const create_account = (req, res, next) => {
                 to: email,
                 subject: "The Mana World account registration",
                 text: `Your account (\"${req.body.username}\") was created successfully.\nHave fun playing The Mana World!`
-            }, (err, info) => {
-                req.app.locals.logger.info(`TMWA.account: sent account creation email: ${req.body.username} ${info.messageId}`);
-            });
+            }, (err, info) => {});
         });
         child.stdin.end();
     });
@@ -176,8 +171,7 @@ const reset_password = async (req, res, next) => {
                 status: "error",
                 error: "no accounts found"
             });
-            req.app.locals.rate_limiting.add(req.ip);
-            setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 8000);
+            req.app.locals.cooldown(req, 8000);
             return;
         }
 
@@ -186,12 +180,11 @@ const reset_password = async (req, res, next) => {
                 continue;
             for (const account of op.accounts) {
                 if (account.email === req.body.email) {
-                    res.status(429).json({
+                    res.status(425).json({
                         status: "error",
                         error: "operation already pending"
                     });
-                    req.app.locals.rate_limiting.add(req.ip);
-                    setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 5000);
+                    req.app.locals.cooldown(req, 5000);
                     return;
                 }
             }
@@ -209,7 +202,7 @@ const reset_password = async (req, res, next) => {
             subject: "The Mana World password reset",
             text: "You are receiving this email because someone (you?) has requested a password reset on The Mana World "+
                    "with your email address.\nIf you did not request a password reset please ignore this email.\n\n"+
-                   "The following accounts are associated with this email address:\n" + account_names + "\n"+
+                   "The following Legacy accounts are associated with this email address:\n" + account_names + "\n"+
                    "To proceed with the password reset:\n" + `${req.app.locals.tmwa.reset}${uuid}`
         }, (err, info) => {
             pending_operations.set(uuid, {
@@ -222,11 +215,9 @@ const reset_password = async (req, res, next) => {
             res.status(200).json({
                 status: "success"
             });
-            req.app.locals.logger.info(`TMWA.account: initiated password reset: ${info.messageId} [${req.ip}]`);
         });
 
-        req.app.locals.rate_limiting.add(req.ip);
-        setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 8000);
+        req.app.locals.cooldown(req, 8000);
         return;
     } else if (req.body && Reflect.has(req.body, "username") &&
         !Reflect.has(req.body, "password") &&
@@ -250,8 +241,7 @@ const reset_password = async (req, res, next) => {
             status: "error",
             error: "malformed request"
         });
-        req.app.locals.rate_limiting.add(req.ip);
-        setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
+        req.app.locals.cooldown(req, 300000);
         return;
     }
 
@@ -261,8 +251,7 @@ const reset_password = async (req, res, next) => {
             status: "error",
             error: "request expired"
         });
-        req.app.locals.rate_limiting.add(req.ip);
-        setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
+        req.app.locals.cooldown(req, 300000);
         return;
     }
 
@@ -271,10 +260,9 @@ const reset_password = async (req, res, next) => {
             status: "error",
             error: "invalid type"
         });
-        req.app.locals.rate_limiting.add(req.ip);
-        setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
+        req.app.locals.cooldown(req, 300000);
         pending_operations.delete(req.body.code);
-        req.app.locals.logger.warn(`TMWA.account: attempted reset account with invalid uuid: ${req.body.username} [${req.ip}]`);
+        req.app.locals.logger.warn(`TMWA.account: attempted to reset a Legacy account using an invalid uuid: ${req.body.username} [${req.ip}]`);
         return;
     }
 
@@ -305,17 +293,14 @@ const reset_password = async (req, res, next) => {
                     status: "success"
                 });
                 req.app.locals.logger.info(`TMWA.account: password has been reset: ${req.body.username} [${req.ip}]`);
-                req.app.locals.rate_limiting.add(req.ip);
-                setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
+                req.app.locals.cooldown(req, 300000);
 
                 transporter.sendMail({
                     from: req.app.locals.mailer.from,
                     to: account.email,
                     subject: "The Mana World password reset",
-                    text: `You have successfully reset the password for account \"${req.body.username}\".\nHave fun playing The Mana World!\n\n⚠ If you did not perform this password reset, please contact us ASAP to secure your account.`
-                }, (err, info) => {
-                    req.app.locals.logger.info(`TMWA.account: sent password reset confirmation email: ${req.body.username} ${info.messageId}`);
-                });
+                    text: `You have successfully reset the password for Legacy account \"${req.body.username}\".\nHave fun playing The Mana World!\n\n⚠ If you did not perform this password reset, please contact us ASAP to secure your account.`
+                }, (err, info) => {});
             });
             child.stdin.end();
             return;
@@ -326,10 +311,9 @@ const reset_password = async (req, res, next) => {
         status: "error",
         error: "foreign account"
     });
-    req.app.locals.rate_limiting.add(req.ip);
-    setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
+    req.app.locals.cooldown(req, 300000);
     pending_operations.delete(req.body.code);
-    req.app.locals.logger.warn(`TMWA.account: attempted reset account not owned by user: ${req.body.username} [${req.ip}]`);
+    req.app.locals.logger.warn(`TMWA.account: attempted to reset a Legacy account not owned by the user: ${req.body.username} [${req.ip}]`);
     return;
 };
 

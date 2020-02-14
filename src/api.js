@@ -1,44 +1,33 @@
 const express = require("express"); // from npm registry
-const Fetch = require("node-fetch"); // from npm registry
 const https = require("https"); // built-in
+const Limiter = require("./limiter.js");
+const Logger = require("./logger.js");
 const api = express();
 
-if (process.env.npm_package_config_port === undefined) {
+if (!process.env.NODE_ENV) {
+    console.error("must be started with 'npm run start'");
+    process.exit(1);
+}
+
+// env-based config
+const dotenv = require("lazy-universal-dotenv");
+const [nodeEnv, buildTarget] = [process.env.NODE_ENV, process.env.BUILD_TARGET];
+const conf = dotenv.getEnvironment({ nodeEnv, buildTarget }).raw;
+Object.assign(process.env, conf); // override
+
+
+if (process.env.PORT === undefined) {
     console.error("Please run this package with `npm start`");
     process.exit(1);
 }
 
-const send_hook = (msg) => {
-    Fetch(process.env.npm_package_config_logger_webhook, {
-        method: "POST",
-        cache: "no-cache",
-        redirect: "follow",
-        headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            content: msg,
-        }),
-    });
-
-    console.log(msg);
-};
-
-const logger = {
-    log: msg => send_hook(`${msg}`),
-    info: msg => send_hook(`ℹ ${msg}`),
-    warn: msg => send_hook(`⚠ ${msg}`),
-    error: msg => send_hook(`❌ ${msg}`),
-};
-
 // config common to all routers:
 api.locals = Object.assign({
-    rate_limiting: new Set(), // XXX: or do we want routers to each have their own rate limiter?
+    cooldown: Limiter.cooldown,
     mailer: {
-        from: process.env.npm_package_config_mailer_from,
+        from: process.env.MAILER__FROM,
     },
-    logger: logger,
+    logger: Logger,
 }, api.locals);
 
 
@@ -46,18 +35,6 @@ api.locals = Object.assign({
 /*******************************
     BEGIN MIDDLEWARES
 ********************************/
-
-const checkRateLimiting = (req, res, next) => {
-    if (req.app.locals.rate_limiting.has(req.ip)) {
-        res.status(429).json({
-            status: "error",
-            error: "too many requests"
-        });
-    } else {
-        next();
-    }
-    return;
-};
 
 const checkCaptcha = (req, res, next) => {
     const token = String(req.get("X-CAPTCHA-TOKEN") || "");
@@ -67,12 +44,17 @@ const checkCaptcha = (req, res, next) => {
             status: "error",
             error: "no token sent"
         });
-        req.app.locals.rate_limiting.add(req.ip);
-        setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
+        req.app.locals.cooldown(req, 300000);
         return false;
     }
 
-    https.get(`https://www.google.com/recaptcha/api/siteverify?secret=${process.env.npm_package_config_recaptcha_secret}&response=${token}`, re => {
+    if (process.env.NODE_ENV === "development") {
+        // local development: no challenge check
+        next();
+        return;
+    }
+
+    https.get(`https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA__SECRET}&response=${token}`, re => {
         re.setEncoding("utf8");
         re.on("data", response => {
             const data = JSON.parse(response);
@@ -87,8 +69,7 @@ const checkCaptcha = (req, res, next) => {
                     status: "error",
                     error: "captcha validation failed"
                 });
-                req.app.locals.rate_limiting.add(req.ip);
-                setTimeout(() => req.app.locals.rate_limiting.delete(req.ip), 300000);
+                req.app.locals.cooldown(req, 300000);
                 return false;
             }
 
@@ -105,6 +86,24 @@ const checkCaptcha = (req, res, next) => {
     })
 };
 
+// enables rapid local prototyping
+api.use((req, res, next) => {
+    if (process.env.NODE_ENV === "development") {
+        res.append("Access-Control-Allow-Origin", "*");
+
+        if (req.method === "OPTIONS") {
+            res.append("Access-Control-Allow-Methods", "*");
+            res.append("Access-Control-Allow-Headers", "*");
+            res.status(200).json({});
+            return;
+        }
+    }
+    next();
+});
+
+// always check rate limiting
+api.use(Limiter.check);
+
 /*******************************
     END MIDDLEWARES
 ********************************/
@@ -118,15 +117,22 @@ const checkCaptcha = (req, res, next) => {
 const global_router = express.Router(["caseSensitive", "strict"]);
 
 const tmwa_router = new (require("./routers/tmwa"))({
-    timezone: process.env.npm_package_config_timezone,
-    name: process.env.npm_package_config_tmwa_name,
-    url: process.env.npm_package_config_tmwa_url,
-    root: process.env.npm_package_config_tmwa_root,
-    home: process.env.npm_package_config_tmwa_home,
-    reset: process.env.npm_package_config_tmwa_reset,
-}, api, checkCaptcha, checkRateLimiting);
+    timezone: process.env.TZ,
+    name: process.env.TMWA__NAME,
+    url: process.env.TMWA__URI,
+    root: process.env.TMWA__ROOT,
+    home: process.env.TMWA__HOME,
+    reset: process.env.TMWA__RESET,
+}, api, checkCaptcha);
+
+const vault = new (require("./routers/vault"))
+    (api, checkCaptcha);
 
 global_router.use("/tmwa", tmwa_router);
+
+vault.init().then(() => {
+    global_router.use("/vault", vault.router);
+})
 api.use("/api", global_router);
 
 /*******************************
@@ -145,4 +151,5 @@ api.use((req, res, next) => {
 
 api.set("trust proxy", "loopback"); // only allow localhost to communicate with the API
 api.disable("x-powered-by"); // we don't need this header
-api.listen(process.env.npm_package_config_port, () => console.info("Listening on port %d", process.env.npm_package_config_port));
+console.log(`Running in ${process.env.NODE_ENV} mode`);
+api.listen(process.env.PORT, () => console.info(`Listening on port ${process.env.PORT}`));

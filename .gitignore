@@ -4,3 +4,7 @@
 /online.txt
 /account.txt
 /athena.txt
+
+# local env files
+.env.local
+.env.*.local

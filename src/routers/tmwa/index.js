@@ -7,7 +7,7 @@ const middlewares = {
 };
 
 module.exports = exports = class TMWA {
-    constructor(config, api, challenge, rate_limit) {
+    constructor(config, api, challenge) {
         // XXX: having to pass a reference to `api` is weird, we should instead
         //      store config in this.config and make the middlewares (somehow)
         //      access this.config. the problem is that we can't pass arguments
@@ -22,7 +22,7 @@ module.exports = exports = class TMWA {
 
         this.router.get("/server", middlewares.server);
 
-        this.router.all("/account", rate_limit, challenge); // flood limit + captcha
+        this.router.all("/account", challenge); // require captcha
         this.router.all("/account", express.json(), middlewares.account);
 
         tmwa_poll(this); // first heartbeat
