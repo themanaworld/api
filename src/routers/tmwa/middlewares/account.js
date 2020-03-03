@@ -140,7 +140,7 @@ const create_account = (req, res, next) => {
                 status: "success"
             });
             req.app.locals.logger.info(`TMWA.account: a Legacy account was created: ${req.body.username} [${req.ip}]`);
-            req.app.locals.cooldown(req, 300000);
+            req.app.locals.cooldown(req, 299000);
 
             if (email === "a@a.com")
                 return;
@@ -293,7 +293,7 @@ const reset_password = async (req, res, next) => {
                     status: "success"
                 });
                 req.app.locals.logger.info(`TMWA.account: password has been reset: ${req.body.username} [${req.ip}]`);
-                req.app.locals.cooldown(req, 300000);
+                req.app.locals.cooldown(req, 299000);
 
                 transporter.sendMail({
                     from: req.app.locals.mailer.from,
