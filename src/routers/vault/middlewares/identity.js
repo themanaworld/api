@@ -180,7 +180,7 @@ const add_identity = async (req, res, next) => {
         return;
     }
 
-    for (const [key, pending] of identity_pending) {
+    for (const [key, pending] of req.app.locals.identity_pending) {
         if (pending.vault === session.vault && pending.email === req.body.email) {
             res.status(425).json({
                 status: "error",

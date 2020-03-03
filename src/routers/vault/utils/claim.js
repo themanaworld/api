@@ -72,7 +72,7 @@ const claim_accounts = async (req, email, vault_id, session = null) => {
             });
         }
 
-        locals.logger.info(`Vault: linked Legacy account ${acc.accountId} to Vault account {${vault_id}} [${req.ip}]`);
+        locals.logger.info(`Vault.legacy.account: linked Legacy account ${acc.accountId} to Vault account {${vault_id}} [${req.ip}]`);
     }
 
     // TODO: split TMWA claiming into its own function, add forums and wiki claiming
