@@ -161,11 +161,8 @@ const claim_by_password = async (req, res, next) => {
             md5saltcrypt.verify(flatfile_account.password, req.body.password)) {
             // update the password in SQL (deferred)
             console.log(`Vault.legacy.account: updating SQL password from flatfile for account ${legacy.accountId}`);
-            req.app.locals.legacy.login.update({
-                userPass: md5saltcrypt.hash(req.body.password),
-            }, {where: {
-                accountId: legacy.accountId,
-            }});
+            legacy.userPass = md5saltcrypt.hash(req.body.password);
+            legacy.save();
         } else {
             // the password is just plain wrong
             res.status(404).json({

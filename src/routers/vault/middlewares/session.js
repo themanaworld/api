@@ -113,11 +113,8 @@ const auth_session = async (req, res, next) => {
             ip: req.app.locals.sequelize.vault.fn("INET6_ATON", req.ip),
         });
 
-        await req.app.locals.vault.login.update({
-            primaryIdentity: ident.id,
-        }, {where: {
-            id: user.id,
-        }});
+        user.primaryIdentity = ident.id;
+        await user.save();
 
         req.app.locals.logger.info(`Vault.session: created a new Vault account {${user.id}} [${req.ip}]`);
         await Claim.claim_accounts(req, session.email, user.id, session);
@@ -245,7 +242,8 @@ const new_session = async (req, res, next) => {
         const account = await req.app.locals.vault.login.findOne({where: {id: identity.userId}});
         if (account === null) {
             // unexpected: the account was deleted but not its identities
-            await req.app.locals.vault.identity.destroy({where: {email: req.body.email}});
+            console.log(`Vault.session: removing dangling identity [${req.ip}]`);
+            await identity.destroy();
             res.status(409).json({
                 status: "error",
                 error: "data conflict",
