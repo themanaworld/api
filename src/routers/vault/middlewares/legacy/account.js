@@ -372,8 +372,9 @@ const migrate = async (req, res, next) => {
             continue;
         }
 
+        let evol_char;
         try {
-            const evol_char = await req.app.locals.evol.char.create({
+            evol_char = await req.app.locals.evol.char.create({
                 name: char.name,
                 charNum: num,
                 accountId: evol_acc.accountId,

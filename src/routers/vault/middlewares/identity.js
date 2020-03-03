@@ -106,21 +106,28 @@ const add_identity = async (req, res, next) => {
 
         await Claim.claim_accounts(req, ident.email, ident.vault);
 
-        for (const [key, session] of req.app.locals.session) {
-            if (session.vault === ident.vault && session.authenticated) {
-                session.identities.push({
+        let session = null;
+        for (const [key, sess] of req.app.locals.session) {
+            if (sess.vault === ident.vault && sess.authenticated) {
+                sess.identities.push({
                     // TODO: make this a class!
                     id: newIdent.id,
                     email: newIdent.email,
                     added: newIdent.addedDate,
                     primary: false,
                 });
+                session = sess;
                 break;
             }
         }
 
         req.app.locals.identity_pending.delete(validate);
-        console.info(`Vault.identity: added a new identity {${session.vault}} [${req.ip}]`);
+
+        if (session !== null) {
+            console.info(`Vault.identity: added a new identity {${session.vault}} [${req.ip}]`);
+        } else {
+            console.info(`Vault.identity: added a new identity [${req.ip}]`);
+        }
 
         res.status(201).json({
             status: "success",
@@ -171,6 +178,17 @@ const add_identity = async (req, res, next) => {
         req.app.locals.logger.warn(`Vault.identity: blocked an attempt to bypass authentication [${req.ip}]`);
         req.app.locals.cooldown(req, 3e5);
         return;
+    }
+
+    for (const [key, pending] of identity_pending) {
+        if (pending.vault === session.vault && pending.email === req.body.email) {
+            res.status(425).json({
+                status: "error",
+                error: "already pending",
+            });
+            req.app.locals.cooldown(req, 60e4);
+            return;
+        }
     }
 
     const find = await req.app.locals.vault.identity.findOne({
@@ -224,7 +242,8 @@ const add_identity = async (req, res, next) => {
     res.status(200).json({
         status: "success"
     });
-    req.app.locals.cooldown(req, 6e4);
+    // TODO: split request and validation so that request has a cooldown of 6e4
+    req.app.locals.cooldown(req, 5e3);
 };
 
 const update_identity = async (req, res, next) => {
