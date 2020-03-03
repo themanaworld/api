@@ -113,7 +113,7 @@ const auth_session = async (req, res, next) => {
             ip: req.app.locals.sequelize.vault.fn("INET6_ATON", req.ip),
         });
 
-        await req.app.locals.vault.identity.update({
+        await req.app.locals.vault.login.update({
             primaryIdentity: ident.id,
         }, {where: {
             id: user.id,
