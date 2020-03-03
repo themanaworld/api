@@ -254,7 +254,12 @@ const new_session = async (req, res, next) => {
             return;
         } else {
             // auth flow
-            if (identity.id !== account.primaryIdentity && !account.allowNonPrimary) {
+            if (account.primaryIdentity === null || account.primaryIdentity === undefined) {
+                // the vault account has no primary identity (bug): let's fix this
+                console.warn(`Vault.session: fixing account with no primary identity {${session.vault}} [${req.ip}]`);
+                account.primaryIdentity = identity.id;
+                await account.save();
+            } else if (identity.id !== account.primaryIdentity && !account.allowNonPrimary) {
                 res.status(423).json({
                     status: "error",
                     error: "non-primary login is disabled",
