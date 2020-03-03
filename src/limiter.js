@@ -19,17 +19,27 @@ const setLimiter = (req, cooldown = 1e3) => {
     // if cooldown is above 5min, assume they did something bad
     if (cooldown >= 3e5) {
         const bad_level = (bad_actors.get(req.ip) || 0) + 1;
-        bad_actors.set(req.ip, bad_level);
 
-        setTimeout(() => {
-            bad_actors.set(req.ip, (bad_actors.get(req.ip) || 1) - 1);
-            console.info(`Limiter: decreasing threat level of IP [${req.ip}]`);
-        }, BAN_HOURS * 3.6e6); // decrease danger level every X hours
-
-        if (bad_level >= MAX_DANGER) {
-            req.app.locals.logger.warn(`Limiter: banning IP for ${BAN_HOURS} hours [${req.ip}]`);
+        if (bad_level > MAX_DANGER) {
+            console.warn(`Limiter: bad actor above max danger level [${req.ip}]`);
         } else {
-            console.warn(`Limiter: bad actor [${req.ip}]`);
+            bad_actors.set(req.ip, bad_level);
+            setTimeout(() => {
+                const current_level = bad_actors.get(req.ip) || 1;
+                bad_actors.set(req.ip, current_level - 1);
+
+                if (current_level === MAX_DANGER) {
+                    req.app.locals.logger.info(`Limiter: unbanning IP (ban expired) [${req.ip}]`);
+                } else {
+                    console.info(`Limiter: decreasing threat level of IP (was level ${current_level}) [${req.ip}]`);
+                }
+            }, BAN_HOURS * 3.6e6); // decrease danger level every X hours
+
+            if (bad_level === MAX_DANGER) {
+                req.app.locals.logger.warn(`Limiter: banning IP for ${BAN_HOURS} hours [${req.ip}]`);
+            } else {
+                console.warn(`Limiter: bad actor (threat level ${bad_level}) [${req.ip}]`);
+            }
         }
     }
 
