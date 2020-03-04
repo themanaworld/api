@@ -229,6 +229,7 @@ const add_identity = async (req, res, next) => {
     if (process.env.NODE_ENV === "development") {
         console.log(`uuid: ${uuid}`);
     } else {
+        // TODO: limit total number of emails that can be dispatched by a single ip in an hour
         transporter.sendMail({
             from: process.env.VAULT__MAILER__FROM,
             to: req.body.email,

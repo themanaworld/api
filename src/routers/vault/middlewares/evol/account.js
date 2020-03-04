@@ -13,8 +13,16 @@ const get_account_list = async (req, vault_id) => {
         where: {vaultId: vault_id},
     });
 
-    for (let acc of claimed) {
-        acc = await req.app.locals.evol.login.findByPk(acc.accountId);
+    for (const acc_ of claimed) {
+        const acc = await req.app.locals.evol.login.findByPk(acc_.accountId);
+
+        if (acc === null || acc === undefined) {
+            // unexpected: account was deleted
+            console.info(`Vault.evol.account: unlinking deleted account ${acc_.accountId} {${vault_id}} [${req.ip}]`);
+            await acc_.destroy(); // un-claim the account
+            continue;
+        }
+
         const chars = [];
         const chars_ = await req.app.locals.evol.char.findAll({
             where: {accountId: acc.accountId},

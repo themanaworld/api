@@ -229,13 +229,27 @@ const new_session = async (req, res, next) => {
             res.status(200).json({
                 status: "success"
             });
-            req.app.locals.cooldown(req, 6e4);
+
+            // max 5 attempts per 15 minutes
+            if (req.app.locals.brute.consume(req, 5, 9e5)) {
+                req.app.locals.cooldown(req, 6e4);
+            } else {
+                req.app.locals.logger.warn(`Vault.session: account creation request flood [${req.ip}]`);
+                req.app.locals.cooldown(req, 3.6e6);
+            }
             return;
         } else {
             res.status(202).json({
                 status: "pending",
             });
-            req.app.locals.cooldown(req, 1e3);
+
+            // max 5 attempts per 15 minutes
+            if (req.app.locals.brute.consume(req, 5, 9e5)) {
+                req.app.locals.cooldown(req, 1e3);
+            } else {
+                req.app.locals.logger.warn(`Vault.session: email check flood [${req.ip}]`);
+                req.app.locals.cooldown(req, 3.6e6);
+            }
             return;
         }
     } else {

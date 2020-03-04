@@ -2,6 +2,7 @@ const express = require("express"); // from npm registry
 const https = require("https"); // built-in
 const Limiter = require("./limiter.js");
 const Logger = require("./logger.js");
+const Brute = require("./brute.js");
 const api = express();
 
 if (!process.env.NODE_ENV) {
@@ -28,6 +29,7 @@ api.locals = Object.assign({
         from: process.env.MAILER__FROM,
     },
     logger: Logger,
+    brute: Brute,
 }, api.locals);
 
 

@@ -1,5 +1,4 @@
 "use strict";
-const uuidv4 = require("uuid/v4");
 const md5saltcrypt = require("../../utils/md5saltcrypt.js");
 const flatfile = require("../../utils/flatfile.js");
 
@@ -17,8 +16,16 @@ const get_account_list = async (req, vault_id) => {
         where: {vaultId: vault_id},
     });
 
-    for (let acc of claimed) {
-        acc = await req.app.locals.legacy.login.findByPk(acc.accountId);
+    for (const acc_ of claimed) {
+        const acc = await req.app.locals.legacy.login.findByPk(acc_.accountId);
+
+        if (acc === null || acc === undefined) {
+            // unexpected: account was deleted
+            console.info(`Vault.legacy.account: unlinking deleted account ${acc_.accountId} {${vault_id}} [${req.ip}]`);
+            await acc_.destroy(); // un-claim the account
+            continue;
+        }
+
         const chars = [];
         const chars_ = await req.app.locals.legacy.char.findAll({
             where: {accountId: acc.accountId},
@@ -150,7 +157,17 @@ const claim_by_password = async (req, res, next) => {
             status: "error",
             error: "not found",
         });
-        req.app.locals.cooldown(req, 1e3);
+
+        // max 5 attempts per 15 minutes
+        if (req.app.locals.brute.consume(req, 5, 9e5)) {
+            // some attempts left
+            console.warn(`Vault.legacy.account: failed to log in to Legacy account {${session.vault}} [${req.ip}]`);
+            req.app.locals.cooldown(req, 3e3);
+        } else {
+            // no attempts left: big cooldown
+            req.app.locals.logger.warn(`Vault.legacy.account: login request flood {${session.vault}} [${req.ip}]`);
+            req.app.locals.cooldown(req, 3.6e6);
+        }
         return;
     }
 
@@ -169,9 +186,17 @@ const claim_by_password = async (req, res, next) => {
                 status: "error",
                 error: "not found",
             });
-            console.warn(`Vault.legacy.account: failed to log in to Legacy account {${session.vault}} [${req.ip}]`);
-            req.app.locals.cooldown(req, 3e5);
-            // TODO: huge cooldown after 8 attempts
+
+            // max 5 attempts per 15 minutes
+            if (req.app.locals.brute.consume(req, 5, 9e5)) {
+                // some attempts left
+                console.warn(`Vault.legacy.account: failed to log in to Legacy account {${session.vault}} [${req.ip}]`);
+                req.app.locals.cooldown(req, 3e3);
+            } else {
+                // no attempts left: big cooldown
+                req.app.locals.logger.warn(`Vault.legacy.account: login request flood {${session.vault}} [${req.ip}]`);
+                req.app.locals.cooldown(req, 3.6e6);
+            }
             return;
         }
     }
