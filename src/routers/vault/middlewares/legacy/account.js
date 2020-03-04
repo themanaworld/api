@@ -5,7 +5,7 @@ const flatfile = require("../../utils/flatfile.js");
 
 const regexes = {
     token: /^[a-zA-Z0-9-_]{6,128}$/, // UUID
-    any23: /^[^\s][^\t\r\n]{6,21}[^\s]$/, // tmwa password (this looks scary)
+    any23: /^[^\s][^\t\r\n]{2,21}[^\s]$/, // tmwa password (this looks scary)
     any30: /^[^\s][^\t\r\n]{6,28}[^\s]$/, // herc password (this looks scary)
     alnum23: /^[a-zA-Z0-9_]{4,23}$/, // mostly for username
     gid: /^[23][0-9]{6}$/, // account id
