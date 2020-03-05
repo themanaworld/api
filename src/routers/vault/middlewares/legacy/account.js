@@ -114,11 +114,11 @@ const claim_by_password = async (req, res, next) => {
         // max 5 attempts per 15 minutes
         if (req.app.locals.brute.consume(req, 5, 9e5)) {
             // some attempts left
-            console.warn(`Vault.legacy.account: failed to log in to Legacy account {${session.vault}} [${req.ip}]`);
+            console.warn(`Vault.legacy.account: failed to log in to Legacy account <${session.vault}@vault> [${req.ip}]`);
             req.app.locals.cooldown(req, 3e3);
         } else {
             // no attempts left: big cooldown
-            req.app.locals.logger.warn(`Vault.legacy.account: login request flood {${session.vault}} [${req.ip}]`);
+            req.app.locals.logger.warn(`Vault.legacy.account: login request flood <${session.vault}@vault> [${req.ip}]`);
             req.app.locals.cooldown(req, 3.6e6);
         }
         return;
@@ -143,11 +143,11 @@ const claim_by_password = async (req, res, next) => {
             // max 5 attempts per 15 minutes
             if (req.app.locals.brute.consume(req, 5, 9e5)) {
                 // some attempts left
-                console.warn(`Vault.legacy.account: failed to log in to Legacy account {${session.vault}} [${req.ip}]`);
+                console.warn(`Vault.legacy.account: failed to log in to Legacy account <${session.vault}@vault> [${req.ip}]`);
                 req.app.locals.cooldown(req, 3e3);
             } else {
                 // no attempts left: big cooldown
-                req.app.locals.logger.warn(`Vault.legacy.account: login request flood {${session.vault}} [${req.ip}]`);
+                req.app.locals.logger.warn(`Vault.legacy.account: login request flood <${session.vault}@vault> [${req.ip}]`);
                 req.app.locals.cooldown(req, 3.6e6);
             }
             return;
@@ -161,7 +161,7 @@ const claim_by_password = async (req, res, next) => {
             status: "error",
             error: "already assigned",
         });
-        req.app.locals.logger.warn(`Vault.legacy.account: blocked an attempt to link an already-linked account {${session.vault}} [${req.ip}]`);
+        req.app.locals.logger.warn(`Vault.legacy.account: blocked an attempt to link an already-linked account <${session.vault}@vault> [${req.ip}]`);
         req.app.locals.cooldown(req, 3e5);
         return;
     }
@@ -204,7 +204,7 @@ const claim_by_password = async (req, res, next) => {
         account
     });
 
-    req.app.locals.logger.info(`Vault.legacy.account: linked Legacy account ${legacy.accountId} to Vault account {${session.vault}} [${req.ip}]`);
+    req.app.locals.logger.info(`Vault.legacy.account: linked Legacy account ${legacy.accountId} to Vault account <${session.vault}@vault> [${req.ip}]`);
     req.app.locals.cooldown(req, 8e3);
 };
 
@@ -271,7 +271,7 @@ const migrate = async (req, res, next) => {
             status: "error",
             error: "not found",
         });
-        req.app.locals.logger.warn(`Vault.legacy.account: blocked an attempt to migrate a Legacy account not owned by the user {${session.vault}} [${req.ip}]`);
+        req.app.locals.logger.warn(`Vault.legacy.account: blocked an attempt to migrate a Legacy account not owned by the user <${session.vault}@vault> [${req.ip}]`);
         req.app.locals.cooldown(req, 3e5);
         return;
     }
@@ -281,7 +281,7 @@ const migrate = async (req, res, next) => {
             status: "error",
             error: "already migrated",
         });
-        req.app.locals.logger.warn(`Vault.legacy.account: blocked an attempt to migrate an already-migrated Legacy account {${session.vault}} [${req.ip}]`);
+        req.app.locals.logger.warn(`Vault.legacy.account: blocked an attempt to migrate an already-migrated Legacy account <${session.vault}@vault> [${req.ip}]`);
         req.app.locals.cooldown(req, 3e5);
         return;
     }
@@ -392,7 +392,7 @@ const migrate = async (req, res, next) => {
         account: evol_account,
     });
 
-    req.app.locals.logger.info(`Vault.legacy.account: migrated Legacy account ${legacy.accountId} {${session.vault}} [${req.ip}]`);
+    req.app.locals.logger.info(`Vault.legacy.account: migrated Legacy account ${legacy.accountId} <${session.vault}@vault> [${req.ip}]`);
     req.app.locals.cooldown(req, 15e3);
 };
 

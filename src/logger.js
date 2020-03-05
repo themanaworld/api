@@ -3,7 +3,7 @@ const Fetch = require("node-fetch"); // from npm registry
 // wraps the (match group) with some markdown syntax
 const markdown = [
     [ /^(?:[^ ]{1,3} )?([a-z.]+)/i, "**" ], // endpoint
-    [ /\{(\d+)\} (?:\[[a-z0-9.:]+\])?$/i, "_" ], // vault account
+    [ /<(\d+@vault)>/i, "_" ], // vault account
     [ /\[([a-z0-9.:]+)\]$/i, "`" ], // ip address
 ];
 

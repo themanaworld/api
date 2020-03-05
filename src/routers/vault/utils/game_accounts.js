@@ -20,7 +20,7 @@ const get_legacy_accounts = async (req, session) => {
 
         if (acc === null || acc === undefined) {
             // unexpected: account was deleted
-            console.info(`Vault.legacy.account: unlinking deleted account ${acc_.accountId} {${session.vault}} [${req.ip}]`);
+            console.info(`Vault.legacy.account: unlinking deleted account ${acc_.accountId} <${session.vault}@vault> [${req.ip}]`);
             await acc_.destroy(); // un-claim the account
             continue;
         }
@@ -65,7 +65,7 @@ const get_account_list = async (req, session) => {
 
         if (acc === null || acc === undefined) {
             // unexpected: account was deleted
-            console.info(`Vault.evol.account: unlinking deleted account ${acc_.accountId} {${session.vault}} [${req.ip}]`);
+            console.info(`Vault.evol.account: unlinking deleted account ${acc_.accountId} <${session.vault}@vault> [${req.ip}]`);
             await acc_.destroy(); // un-claim the account
             continue;
         }

@@ -44,7 +44,7 @@ const get_identities = async (req, res, next) => {
     }
 
     if (session.identities.length === 0) {
-        console.info(`Vault.identity: fetching identities {${session.vault}} [${req.ip}]`);
+        console.info(`Vault.identity: fetching identities <${session.vault}@vault> [${req.ip}]`);
         const rows = await req.app.locals.vault.identity.findAll({
             where: {userId: session.vault}
         });
@@ -124,7 +124,7 @@ const add_identity = async (req, res, next) => {
         req.app.locals.identity_pending.delete(validate);
 
         if (session !== null) {
-            console.info(`Vault.identity: added a new identity {${session.vault}} [${req.ip}]`);
+            console.info(`Vault.identity: added a new identity <${session.vault}@vault> [${req.ip}]`);
         } else {
             console.info(`Vault.identity: added a new identity [${req.ip}]`);
         }
@@ -224,7 +224,7 @@ const add_identity = async (req, res, next) => {
         email: req.body.email,
     });
 
-    console.log(`Vault.session: starting identity validation {${session.vault}} [${req.ip}]`);
+    console.log(`Vault.session: starting identity validation <${session.vault}@vault> [${req.ip}]`);
 
     if (process.env.NODE_ENV === "development") {
         console.log(`uuid: ${uuid}`);

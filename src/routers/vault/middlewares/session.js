@@ -114,7 +114,7 @@ const auth_session = async (req, res, next) => {
         user.primaryIdentity = ident.id;
         await user.save();
 
-        req.app.locals.logger.info(`Vault.session: created a new Vault account {${user.id}} [${req.ip}]`);
+        req.app.locals.logger.info(`Vault.session: created a new Vault account <${user.id}@vault> [${req.ip}]`);
         await Claim.claim_accounts(req, session.email, user.id, session);
 
         // update current session
@@ -147,7 +147,7 @@ const auth_session = async (req, res, next) => {
                 req.app.locals.session.delete(key);
             }
         }
-        console.info(`Vault.session: accepted login {${session.vault}} [${req.ip}]`);
+        console.info(`Vault.session: accepted login <${session.vault}@vault> [${req.ip}]`);
     }
 
     req.app.locals.cooldown(req, 6e4);
@@ -171,7 +171,7 @@ const auth_session = async (req, res, next) => {
 
         if (primary === null || primary === undefined) {
             // the vault account has no primary identity (bug): let's fix this
-            console.warn(`Vault.session: fixing account with a deleted primary identity {${session.vault}} [${req.ip}]`);
+            console.warn(`Vault.session: fixing account with a deleted primary identity <${session.vault}@vault> [${req.ip}]`);
             await req.app.locals.vault.login.update({
                 primaryIdentity: session.identity,
             }, {where: {
@@ -276,7 +276,7 @@ const new_session = async (req, res, next) => {
             // auth flow
             if (account.primaryIdentity === null || account.primaryIdentity === undefined) {
                 // the vault account has no primary identity (bug): let's fix this
-                console.warn(`Vault.session: fixing account with no primary identity {${session.vault}} [${req.ip}]`);
+                console.warn(`Vault.session: fixing account with no primary identity <${session.vault}@vault> [${req.ip}]`);
                 account.primaryIdentity = identity.id;
                 await account.save();
             } else if (identity.id !== account.primaryIdentity && !account.allowNonPrimary) {

@@ -134,7 +134,7 @@ const new_account = async (req, res, next) => {
     const account = new EvolAccount(evol_acc.accountId, evol_acc.userid);
     session.gameAccounts.push(account);
 
-    req.app.locals.logger.info(`Vault.evol.account: created a new game account: ${account.accountId} {${session.vault}} [${req.ip}]`);
+    req.app.locals.logger.info(`Vault.evol.account: created a new game account: ${account.accountId} <${session.vault}@vault> [${req.ip}]`);
 
     res.status(200).json({
         status: "success",
@@ -203,7 +203,7 @@ const update_account = async (req, res, next) => {
             status: "error",
             error: "account not found",
         });
-        req.app.locals.logger.warn(`Vault.evol.account: blocked an attempt to modify a game account not owned by the user {${session.vault}} [${req.ip}]`);
+        req.app.locals.logger.warn(`Vault.evol.account: blocked an attempt to modify a game account not owned by the user <${session.vault}@vault> [${req.ip}]`);
         req.app.locals.cooldown(req, 3e5);
         return;
     }
@@ -228,7 +228,7 @@ const update_account = async (req, res, next) => {
             userid: req.body.username,
         };
         account.name  = req.body.username;
-        req.app.locals.logger.info(`Vault.evol.account: changed username of game account ${account.accountId} {${session.vault}} [${req.ip}]`);
+        req.app.locals.logger.info(`Vault.evol.account: changed username of game account ${account.accountId} <${session.vault}@vault> [${req.ip}]`);
         req.app.locals.vault.account_log.create({
             vaultId: session.vault,
             accountType: "EVOL",
@@ -241,7 +241,7 @@ const update_account = async (req, res, next) => {
         update_fields = {
             userPass: req.body.password,
         };
-        req.app.locals.logger.info(`Vault.evol.account: changed password of game account ${account.accountId} {${session.vault}} [${req.ip}]`);
+        req.app.locals.logger.info(`Vault.evol.account: changed password of game account ${account.accountId} <${session.vault}@vault> [${req.ip}]`);
         req.app.locals.vault.account_log.create({
             vaultId: session.vault,
             accountType: "EVOL",
