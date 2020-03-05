@@ -1,52 +1,11 @@
 "use strict";
+const EvolAccount = require("../../types/EvolAccount.js");
 
 const regexes = {
     token: /^[a-zA-Z0-9-_]{6,128}$/, // UUID
     any30: /^[^\s][^\t\r\n]{6,28}[^\s]$/, // herc password (this looks scary)
     alnum23: /^[a-zA-Z0-9_]{4,23}$/, // mostly for username
     gid: /^[23][0-9]{6}$/, // account id
-};
-
-const get_account_list = async (req, vault_id) => {
-    const accounts = [];
-    const claimed = await req.app.locals.vault.claimed_game_accounts.findAll({
-        where: {vaultId: vault_id},
-    });
-
-    for (const acc_ of claimed) {
-        const acc = await req.app.locals.evol.login.findByPk(acc_.accountId);
-
-        if (acc === null || acc === undefined) {
-            // unexpected: account was deleted
-            console.info(`Vault.evol.account: unlinking deleted account ${acc_.accountId} {${vault_id}} [${req.ip}]`);
-            await acc_.destroy(); // un-claim the account
-            continue;
-        }
-
-        const chars = [];
-        const chars_ = await req.app.locals.evol.char.findAll({
-            where: {accountId: acc.accountId},
-        });
-
-        for (const char of chars_) {
-            chars.push({
-                // TODO: make this a class
-                name: char.name,
-                charId: char.charId,
-                level: char.baseLevel,
-                sex: char.sex,
-            });
-        }
-
-        accounts.push({
-            // TODO: make this a class
-            name: acc.userid,
-            accountId: acc.accountId,
-            chars,
-        });
-    }
-
-    return accounts;
 };
 
 const get_accounts = async (req, res, next) => {
@@ -83,21 +42,12 @@ const get_accounts = async (req, res, next) => {
         return;
     }
 
-    let accounts = session.gameAccounts;
-
-    if (accounts.length < 1) {
-        console.info(`Vault.evol.account: fetching evol accounts {${session.vault}} [${req.ip}]`);
-        accounts = await get_account_list(req, session.vault);
-        session.gameAccounts = accounts;
-        req.app.locals.cooldown(req, 3e3);
-    } else {
-        req.app.locals.cooldown(req, 1e3);
-    }
-
     res.status(200).json({
         status: "success",
-        accounts,
+        accounts: session.gameAccounts,
     });
+
+    req.app.locals.cooldown(req, 1e3);
 };
 
 const new_account = async (req, res, next) => {
@@ -181,11 +131,7 @@ const new_account = async (req, res, next) => {
     });
 
     // now add it to the evol cache
-    const account = {
-        name: evol_acc.userid,
-        accountId: evol_acc.accountId,
-        chars: [],
-    };
+    const account = new EvolAccount(evol_acc.accountId, evol_acc.userid);
     session.gameAccounts.push(account);
 
     req.app.locals.logger.info(`Vault.evol.account: created a new game account: ${account.accountId} {${session.vault}} [${req.ip}]`);

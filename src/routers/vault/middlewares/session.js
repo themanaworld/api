@@ -3,6 +3,7 @@ const uuidv4 = require("uuid/v4");
 const nodemailer = require("nodemailer");
 const Claim = require("../utils/claim.js");
 const Session = require("../types/Session.js");
+const game_accounts = require("../utils/game_accounts.js");
 
 let transporter = nodemailer.createTransport({
     sendmail: true,
@@ -82,10 +83,7 @@ const auth_session = async (req, res, next) => {
         // already authed, tell client
         res.status(200).json({
             status: "success",
-            session: {
-                expires: session.expires,
-                identity: session.identity,
-            }
+            session,
         });
         req.app.locals.cooldown(req, 500);
         return;
@@ -154,6 +152,10 @@ const auth_session = async (req, res, next) => {
 
     req.app.locals.cooldown(req, 6e4);
 
+    // pre-cache the accounts and chars in the session cache
+    await game_accounts.get_legacy(req, session);
+    await game_accounts.get_evol(req, session);
+
     // authenticate this session
     session.authenticated = true;
 
@@ -165,26 +167,32 @@ const auth_session = async (req, res, next) => {
 
     if (session.identity !== session.primaryIdentity) {
         // user did not log in with their primary identity
-        // TODO: allow to block logging in with non-primary identities
         const primary = await req.app.locals.vault.identity.findByPk(session.primaryIdentity);
-        transporter.sendMail({
-            from: process.env.VAULT__MAILER__FROM,
-            to: primary.email,
-            subject: "The Mana World security notice",
-            text: "Someone has logged in to your Vault account using an email address that " +
-                    "is not your primary address. If this wasn't you, please contact us immediately.\n\n" +
-                    "To stop receiving login notices, use your primary email address when logging in."
-        }, (err, info) => {});
-    }
 
-    // TODO: already cache the identities and accounts in the session
+        if (primary === null || primary === undefined) {
+            // the vault account has no primary identity (bug): let's fix this
+            console.warn(`Vault.session: fixing account with a deleted primary identity {${session.vault}} [${req.ip}]`);
+            await req.app.locals.vault.login.update({
+                primaryIdentity: session.identity,
+            }, {where: {
+                id: session.vault,
+            }});
+            session.primaryIdentity = session.identity;
+        } else {
+            transporter.sendMail({
+                from: process.env.VAULT__MAILER__FROM,
+                to: primary.email,
+                subject: "The Mana World security notice",
+                text: "Someone has logged in to your Vault account using an email address that " +
+                        "is not your primary address. If this wasn't you, please contact us immediately.\n\n" +
+                        "To stop receiving login notices, use your primary email address when logging in."
+            }, (err, info) => {});
+        }
+    }
 
     res.status(200).json({
         status: "success",
-        session: {
-            expires: session.expires,
-            identity: session.identity,
-        }
+        session,
     });
 };
 

@@ -1,6 +1,10 @@
 "use strict";
 const md5saltcrypt = require("../../utils/md5saltcrypt.js");
 const flatfile = require("../../utils/flatfile.js");
+const LegacyAccount = require("../../types/LegacyAccount.js");
+const LegacyChar = require("../../types/LegacyChar.js");
+const EvolAccount = require("../../types/EvolAccount.js");
+const EvolChar = require("../../types/EvolChar.js");
 
 const regexes = {
     token: /^[a-zA-Z0-9-_]{6,128}$/, // UUID
@@ -8,48 +12,6 @@ const regexes = {
     any30: /^[^\s][^\t\r\n]{6,28}[^\s]$/, // herc password (this looks scary)
     alnum23: /^[a-zA-Z0-9_]{4,23}$/, // mostly for username
     gid: /^[23][0-9]{6}$/, // account id
-};
-
-const get_account_list = async (req, vault_id) => {
-    const accounts = [];
-    const claimed = await req.app.locals.vault.claimed_legacy_accounts.findAll({
-        where: {vaultId: vault_id},
-    });
-
-    for (const acc_ of claimed) {
-        const acc = await req.app.locals.legacy.login.findByPk(acc_.accountId);
-
-        if (acc === null || acc === undefined) {
-            // unexpected: account was deleted
-            console.info(`Vault.legacy.account: unlinking deleted account ${acc_.accountId} {${vault_id}} [${req.ip}]`);
-            await acc_.destroy(); // un-claim the account
-            continue;
-        }
-
-        const chars = [];
-        const chars_ = await req.app.locals.legacy.char.findAll({
-            where: {accountId: acc.accountId},
-        });
-
-        for (const char of chars_) {
-            chars.push({
-                name: char.name,
-                charId: char.charId,
-                revoltId: char.revoltId,
-                level: char.baseLevel,
-                sex: char.sex,
-            });
-        }
-
-        accounts.push({
-            name: acc.userid,
-            accountId: acc.accountId,
-            revoltId: acc.revoltId,
-            chars,
-        });
-    }
-
-    return accounts;
 };
 
 const get_accounts = async (req, res, next) => {
@@ -86,21 +48,12 @@ const get_accounts = async (req, res, next) => {
         return;
     }
 
-    let accounts = session.legacyAccounts;
-
-    if (accounts.length < 1) {
-        console.info(`Vault.legacy.account: fetching legacy accounts {${session.vault}} [${req.ip}]`);
-        accounts = await get_account_list(req, session.vault);
-        session.legacyAccounts = accounts;
-        req.app.locals.cooldown(req, 3e3);
-    } else {
-        req.app.locals.cooldown(req, 1e3);
-    }
-
     res.status(200).json({
         status: "success",
-        accounts,
+        accounts: session.legacyAccounts,
     });
+
+    req.app.locals.cooldown(req, 1e3);
 };
 
 const claim_by_password = async (req, res, next) => {
@@ -228,28 +181,22 @@ const claim_by_password = async (req, res, next) => {
     });
 
     // now we must update the session cache:
-    const chars = [];
-    const chars_ = await req.app.locals.legacy.char.findAll({
+    const chars = await req.app.locals.legacy.char.findAll({
         where: {accountId: legacy.accountId},
     });
 
-    for (const char of chars_) {
-        chars.push({
-            // TODO: make this a class
-            name: char.name,
-            charId: char.charId,
-            revoltId: char.revoltId,
-            level: char.baseLevel,
-            sex: char.sex,
-        });
+    const account = new LegacyAccount(legacy.accountId, legacy.userid);
+    account.revoltId = legacy.revoltId;
+
+    for (const char_ of chars) {
+        const char = new LegacyChar(account, char_.charId, char_.name);
+        char.revoltId = char_.revoltId;
+        char.baseLevel = char_.baseLevel;
+        char.gender = char_.sex;
+
+        account.chars.push(char);
     }
 
-    const account = {
-        name: legacy.userid,
-        accountId: legacy.accountId,
-        revoltId: legacy.revoltId,
-        chars,
-    };
     session.legacyAccounts.push(account);
 
     res.status(200).json({
@@ -374,14 +321,14 @@ const migrate = async (req, res, next) => {
         vaultId: session.vault,
     });
 
-    // now add it to the evol cache
-    const cache_key = session.gameAccounts.push({
-        name: evol_acc.userid,
-        accountId: evol_acc.accountId,
-        chars: [],
-    }) - 1;
+    const evol_account = new EvolAccount(evol_acc.accountId, evol_acc.userid);
+    evol_account.legacyId = legacy.accountId;
+    evol_account.legacyAccount = legacy;
 
-    legacy.revoltId = evol_acc.accountId; // update legacy cache
+    // update legacy account cache
+    legacy.revoltId = evol_acc.accountId;
+    legacy.revoltAccount = evol_acc;
+
     await req.app.locals.legacy.login.update({ // update sql
         revoltId: evol_acc.accountId,
     }, {where: {
@@ -391,6 +338,7 @@ const migrate = async (req, res, next) => {
     // XXX: ideally we should be using createBulk but we also want to update
     for (const [num, char] of legacy.chars.entries()) {
         if (char.revoltId) {
+            // already migrated
             continue;
         }
 
@@ -416,14 +364,17 @@ const migrate = async (req, res, next) => {
         });
 
         // update the evol cache
-        session.gameAccounts[cache_key].chars.push({
-            name: evol_char.name,
-            charId: evol_char.charId,
-            level: 1,
-            sex: evol_char.sex,
-        });
+        const evol_char_ = new EvolChar(evol_account, evol_char.charId, evol_char.name);
+        evol_char_.legacyChar = char;
+        evol_char_.legacyId = char.charId;
+        evol_char_.gender = evol_char.sex;
 
-        char.revoltId = evol_char.charId; // update legacy cache
+        evol_account.chars.push(evol_char_);
+
+        // update legacy cache
+        char.revoltId = evol_char.charId;
+        char.revoltAccount = evol_account;
+
         await req.app.locals.legacy.char.update({ // update sql
             revoltId: evol_char.charId,
         }, {where: {
@@ -431,11 +382,14 @@ const migrate = async (req, res, next) => {
         }});
     }
 
+    session.gameAccounts.push(evol_account);
+
     // TODO: try/catch each of the await operations
 
     res.status(200).json({
         status: "success",
-        account: session.gameAccounts[cache_key],
+        session,
+        account: evol_account,
     });
 
     req.app.locals.logger.info(`Vault.legacy.account: migrated Legacy account ${legacy.accountId} {${session.vault}} [${req.ip}]`);

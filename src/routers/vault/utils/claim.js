@@ -1,4 +1,6 @@
 const { Op } = require("sequelize");
+const LegacyAccount = require("../types/LegacyAccount.js");
+const LegacyChar = require("../types/LegacyChar.js");
 
 // claim by email // TODO: DRY this
 const claim_accounts = async (req, email, vault_id, session = null) => {
@@ -49,27 +51,24 @@ const claim_accounts = async (req, email, vault_id, session = null) => {
         });
 
         if (session !== null) {
-            const chars = [];
             const chars_ = await locals.legacy.char.findAll({
                 where: {accountId: acc.accountId},
             });
 
+            const legacy_account = new LegacyAccount(acc.accountId, acc.userid);
+            legacy_account.revoltId = acc.revoltId;
+
             for (const char of chars_) {
-                chars.push({
-                    name: char.name,
-                    charId: char.charId,
-                    revoltId: char.revoltId,
-                    level: char.baseLevel,
-                    sex: char.sex,
-                });
+                const legacy_char = new LegacyChar(legacy_account, char.charId, char.name);
+                legacy_char.revoltId = char.revoltId;
+                legacy_char.baseLevel = char.baseLevel;
+                legacy_char.gender = char.sex;
+
+                legacy_account.chars.push(legacy_char);
             }
+
             // add to session cache
-            session.legacyAccounts.push({
-                name: acc.userid,
-                accountId: acc.accountId,
-                revoltId: acc.revoltId,
-                chars,
-            });
+            session.legacyAccounts.push(legacy_account);
         }
 
         locals.logger.info(`Vault.legacy.account: linked Legacy account ${acc.accountId} to Vault account {${vault_id}} [${req.ip}]`);
