@@ -11,13 +11,17 @@ const session_handler = {
         if (obj === null || obj === undefined)
             return obj;
 
-        if (Reflect.has(obj, timeout_symbol))
+        let minutes = 30;
+
+        if (Reflect.has(obj, timeout_symbol)) {
             clearTimeout(obj[timeout_symbol]);
+            minutes = 360; // 6 hours
+        }
 
         let expires = new Date();
-        expires.setUTCHours(expires.getUTCHours() + 6);
+        expires.setUTCMinutes(expires.getUTCMinutes() + minutes);
         obj.expires = expires // this could also be a symbol
-        obj[timeout_symbol] = setTimeout(() => session_handler.delete(key), 6 * 3600000); // 6 hours
+        obj[timeout_symbol] = setTimeout(() => session_handler.delete(key), minutes * 60000);
 
         return obj;
     },
