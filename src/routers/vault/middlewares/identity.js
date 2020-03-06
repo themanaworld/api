@@ -88,7 +88,14 @@ const add_identity = async (req, res, next) => {
                 status: "error",
                 error: "token has expired",
             });
-            req.app.locals.cooldown(req, 15e3);
+
+            // max 3 attempts per 15 minutes
+            if (req.app.locals.brute.consume(req, 3, 9e5)) {
+                req.app.locals.cooldown(req, 15e3);
+            } else {
+                req.app.locals.logger.warn(`Vault.identity: validation request flood [${req.ip}]`);
+                req.app.locals.cooldown(req, 3.6e6);
+            }
             return;
         }
 
@@ -217,7 +224,11 @@ const add_identity = async (req, res, next) => {
         return;
     }
 
-    const uuid = uuidv4();
+    let uuid;
+    do { // avoid collisions
+        uuid =  uuidv4();
+    } while (req.app.locals.session.get(uuid));
+
     req.app.locals.identity_pending.set(uuid, {
         ip: req.ip,
         vault: session.vault,

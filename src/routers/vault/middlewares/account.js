@@ -44,6 +44,7 @@ const get_data = async (req, res, next) => {
             // TODO: make this a method of Session
             primaryIdentity: session.primaryIdentity,
             allowNonPrimary: session.allowNonPrimary,
+            strictIPCheck: session.strictIPCheck,
             vaultId: session.vault,
         },
     });
@@ -64,7 +65,7 @@ const update_account = async (req, res, next) => {
     }
 
     if (!req.body || !Reflect.has(req.body, "primary") || !Reflect.has(req.body, "allow") ||
-        !Number.isInteger(req.body.primary)) {
+        !Reflect.has(req.body, "strict") || !Number.isInteger(req.body.primary)) {
         res.status(400).json({
             status: "error",
             error: "invalid format",
@@ -90,6 +91,17 @@ const update_account = async (req, res, next) => {
             error: "not authenticated",
         });
         req.app.locals.logger.warn(`Vault.account: blocked an attempt to bypass authentication [${req.ip}]`);
+        req.app.locals.cooldown(req, 3e5);
+        return;
+    }
+
+    if (session.strictIPCheck && session.ip !== req.ip) {
+        // the ip is not the same
+        res.status(401).json({
+            status: "error",
+            error: "ip address mismatch",
+        });
+        req.app.locals.logger.warn(`Vault.account: ip address mismatch <${session.vault}@vault> [${req.ip}]`);
         req.app.locals.cooldown(req, 3e5);
         return;
     }
@@ -122,6 +134,10 @@ const update_account = async (req, res, next) => {
         // update allow non-primary
         update_fields.allowNonPrimary = !!req.body.allow;
     }
+    if (session.strictIPCheck !== !!req.body.strict) {
+        // update allow non-primary
+        update_fields.strictIPCheck = !!req.body.strict;
+    }
 
     // update SQL
     if (Object.keys(update_fields).length) {
@@ -132,6 +148,7 @@ const update_account = async (req, res, next) => {
 
     // now update our cache
     session.allowNonPrimary = !!req.body.allow;
+    session.strictIPCheck = !!req.body.strict;
     session.primaryIdentity = +req.body.primary;
 
     for (const ident of session.identities) {

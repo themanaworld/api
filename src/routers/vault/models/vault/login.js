@@ -17,6 +17,11 @@ module.exports = {
             defaultValue: true,
             allowNull: false,
         },
+        strictIPCheck: {
+            type: Sequelize.BOOLEAN,
+            defaultValue: true,
+            allowNull: false,
+        },
         creationDate: {
             type: Sequelize.DATE,
             allowNull: false,

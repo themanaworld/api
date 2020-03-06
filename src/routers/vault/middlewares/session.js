@@ -74,8 +74,29 @@ const auth_session = async (req, res, next) => {
                 identity: null,
             }
         });
-        // don't log: this can get spammy
-        req.app.locals.cooldown(req, 1e3);
+
+        // max 3 attempts per 15 minutes
+        if (req.app.locals.brute.consume(req, 3, 9e5)) {
+            req.app.locals.cooldown(req, 1e3);
+        } else {
+            req.app.locals.logger.warn(`Vault.session: authentication request flood [${req.ip}]`);
+            req.app.locals.cooldown(req, 3.6e6);
+        }
+        return;
+    }
+
+    if (session.strictIPCheck && session.ip !== req.ip) {
+        // not the same ip
+        res.status(403).json({
+            status: "error",
+            error: "ip address mismatch",
+            session: {
+                expires: 0,
+                identity: null,
+            }
+        });
+
+        req.app.locals.cooldown(req, 5e3);
         return;
     }
 
@@ -122,6 +143,7 @@ const auth_session = async (req, res, next) => {
         session.identity = ident.id;
         session.primaryIdentity = ident.id;
         session.allowNonPrimary = user.allowNonPrimary;
+        session.strictIPCheck = user.strictIPCheck;
         session.identities = [{
             // TODO: make this a class!
             email: ident.email,
@@ -215,7 +237,11 @@ const new_session = async (req, res, next) => {
 
         if (Reflect.has(req.body, "confirm") && req.body.confirm === true) {
             // account creation request
-            const uuid = uuidv4();
+            let uuid;
+            do { // avoid collisions
+                uuid =  uuidv4();
+            } while (req.app.locals.session.get(uuid));
+
             const session = new Session(req.ip, req.body.email);
             req.app.locals.session.set(uuid, session);
 
@@ -276,7 +302,7 @@ const new_session = async (req, res, next) => {
             // auth flow
             if (account.primaryIdentity === null || account.primaryIdentity === undefined) {
                 // the vault account has no primary identity (bug): let's fix this
-                console.warn(`Vault.session: fixing account with no primary identity <${session.vault}@vault> [${req.ip}]`);
+                console.warn(`Vault.session: fixing account with no primary identity <${account.id}@vault> [${req.ip}]`);
                 account.primaryIdentity = identity.id;
                 await account.save();
             } else if (identity.id !== account.primaryIdentity && !account.allowNonPrimary) {
@@ -290,11 +316,16 @@ const new_session = async (req, res, next) => {
 
             // TODO: if account has WebAuthn do WebAuthn authentication flow
 
-            const uuid = uuidv4();
+            let uuid;
+            do { // avoid collisions
+                uuid =  uuidv4();
+            } while (req.app.locals.session.get(uuid));
+
             const session = new Session(req.ip, req.body.email);
             session.vault = account.id;
             session.primaryIdentity = account.primaryIdentity;
             session.allowNonPrimary = account.allowNonPrimary;
+            session.strictIPCheck = account.strictIPCheck;
             session.identity = identity.id;
             req.app.locals.session.set(uuid, session);
 

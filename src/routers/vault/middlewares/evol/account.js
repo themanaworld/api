@@ -42,6 +42,17 @@ const get_accounts = async (req, res, next) => {
         return;
     }
 
+    if (session.strictIPCheck && session.ip !== req.ip) {
+        // the ip is not the same
+        res.status(403).json({
+            status: "error",
+            error: "ip address mismatch",
+        });
+        req.app.locals.logger.warn(`Vault.evol.account: ip address mismatch <${session.vault}@vault> [${req.ip}]`);
+        req.app.locals.cooldown(req, 3e5);
+        return;
+    }
+
     res.status(200).json({
         status: "success",
         accounts: session.gameAccounts,
@@ -92,6 +103,17 @@ const new_account = async (req, res, next) => {
             error: "not authenticated",
         });
         req.app.locals.logger.warn(`Vault.evol.account: blocked an attempt to bypass authentication [${req.ip}]`);
+        req.app.locals.cooldown(req, 3e5);
+        return;
+    }
+
+    if (session.strictIPCheck && session.ip !== req.ip) {
+        // the ip is not the same
+        res.status(403).json({
+            status: "error",
+            error: "ip address mismatch",
+        });
+        req.app.locals.logger.warn(`Vault.evol.account: ip address mismatch <${session.vault}@vault> [${req.ip}]`);
         req.app.locals.cooldown(req, 3e5);
         return;
     }
@@ -186,6 +208,17 @@ const update_account = async (req, res, next) => {
             error: "not authenticated",
         });
         req.app.locals.logger.warn(`Vault.evol.account: blocked an attempt to bypass authentication [${req.ip}]`);
+        req.app.locals.cooldown(req, 3e5);
+        return;
+    }
+
+    if (session.strictIPCheck && session.ip !== req.ip) {
+        // the ip is not the same
+        res.status(403).json({
+            status: "error",
+            error: "ip address mismatch",
+        });
+        req.app.locals.logger.warn(`Vault.evol.account: ip address mismatch <${session.vault}@vault> [${req.ip}]`);
         req.app.locals.cooldown(req, 3e5);
         return;
     }

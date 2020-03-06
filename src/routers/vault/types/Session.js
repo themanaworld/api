@@ -24,6 +24,8 @@ module.exports = class Session {
     gameAccounts = [];
     /** ip that was used to init the session */
     ip;
+    /** refuse to authenticate a session with a different IP */
+    strictIPCheck = true;
 
     constructor (ip, email) {
         this.ip = ip;
