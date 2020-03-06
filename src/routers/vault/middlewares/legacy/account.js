@@ -321,6 +321,8 @@ const migrate = async (req, res, next) => {
         vaultId: session.vault,
     });
 
+    // TODO: set an account variable with the original legacy account id
+
     const evol_account = new EvolAccount(evol_acc.accountId, evol_acc.userid);
     evol_account.legacyId = legacy.accountId;
     evol_account.legacyAccount = legacy;
@@ -357,6 +359,8 @@ const migrate = async (req, res, next) => {
             console.error(err);
             continue;
         }
+
+        // TODO: set a variable in the char with the original legacy char id
 
         // remove the name reservation
         req.app.locals.evol.char_reservation.destroy({

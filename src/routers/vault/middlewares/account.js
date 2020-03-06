@@ -41,8 +41,10 @@ const get_data = async (req, res, next) => {
     res.status(200).json({
         status: "success",
         data: {
+            // TODO: make this a method of Session
             primaryIdentity: session.primaryIdentity,
             allowNonPrimary: session.allowNonPrimary,
+            vaultId: session.vault,
         },
     });
     req.app.locals.cooldown(req, 1e3);
