@@ -8,6 +8,8 @@ module.exports = class EvolChar extends Char {
     legacyId = null;
     /** reference to the LegacyChar */
     legacyChar = null;
+    /** evol gender (different than tmwa) */
+    gender = "U";
 
     /**
      * serialize for sending over the network

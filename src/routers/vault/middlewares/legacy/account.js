@@ -350,7 +350,7 @@ const migrate = async (req, res, next) => {
                 accountId: evol_acc.accountId,
                 hairColor: Math.floor(Math.random() * 21), // range: [0,21[
                 hair: (Math.floor(Math.random() * 28) + 1), // range: [1,28]
-                sex: char.sex === "F" ? "F" : (char.sex === "M" ? "M" : "U"), // non-binary is undefined in evol
+                sex: char.gender === "F" ? "F" : (char.gender === "M" ? "M" : "U"), // non-binary is undefined in evol
             });
         } catch (err) {
             // char.name has a UNIQUE constraint but an actual collision would never happen
