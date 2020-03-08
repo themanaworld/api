@@ -29,7 +29,7 @@ module.exports = class Session {
 
     constructor (ip, email) {
         this.ip = ip;
-        this.email = email;
+        this.email = email.toLowerCase();
     }
 
     /**

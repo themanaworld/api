@@ -110,6 +110,37 @@ const auth_session = async (req, res, next) => {
         return;
     }
 
+    if (!req.query || !Reflect.has(req.query, "email") ||
+        !req.query.email.match(/^(?:[a-zA-Z0-9.$&+=_~-]{1,255}@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,255}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,255}[a-zA-Z0-9])?){1,9})$/) ||
+        req.query.email.length >= 320) {
+        res.status(400).json({
+            status: "error",
+            error: "invalid email address",
+        });
+        req.app.locals.cooldown(req, 1e3);
+        return;
+    }
+
+    if (req.query.email.toLowerCase() !== session.email) {
+        res.status(410).json({
+            status: "error",
+            error: "session expired",
+            session: {
+                expires: 0,
+                identity: null,
+            }
+        });
+
+        // max 3 attempts per 15 minutes
+        if (req.app.locals.brute.consume(req, 3, 9e5)) {
+            req.app.locals.cooldown(req, 1e3);
+        } else {
+            req.app.locals.logger.warn(`Vault.session: authentication request flood [${req.ip}]`);
+            req.app.locals.cooldown(req, 3.6e6);
+        }
+        return;
+    }
+
     if (session.vault === null && session.identity === null) {
         // this is a new account
         const user = await req.app.locals.vault.login.create({});
@@ -212,9 +243,18 @@ const auth_session = async (req, res, next) => {
         }
     }
 
+    // immediately change the session uuid
+    const new_uuid = uuidv4();
+    req.app.locals.session.set(new_uuid, session);
+    req.app.locals.session.delete(token);
+
     res.status(200).json({
         status: "success",
-        session,
+        session: {
+            key: new_uuid,
+            expires: session.expires,
+            identity: session.identity,
+        },
     });
 };
 
