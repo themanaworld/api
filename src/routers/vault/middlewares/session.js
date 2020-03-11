@@ -4,6 +4,7 @@ const nodemailer = require("nodemailer");
 const Claim = require("../utils/claim.js");
 const Session = require("../types/Session.js");
 const game_accounts = require("../utils/game_accounts.js");
+const validate = require("../utils/validate.js");
 
 let transporter = nodemailer.createTransport({
     sendmail: true,
@@ -11,23 +12,16 @@ let transporter = nodemailer.createTransport({
     path: '/usr/sbin/sendmail'
 });
 
-const delete_session = async (req, res, next) => {
-    const token = String(req.get("X-VAULT-SESSION") || "");
+const delete_session = async (req, res) => {
+    let token, session;
 
-    if (!token.match(/^[a-zA-Z0-9-_]{6,128}$/)) {
-        res.status(400).json({
-            status: "error",
-            error: "missing session key",
-        });
-        req.app.locals.logger.warn(`Vault.session: blocked an attempt to bypass authentication [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
+    try {
+        [token, session] = validate.get_session(req, res);
+    } catch { return } // already handled
 
-    const session = req.app.locals.session.get(token);
     req.app.locals.cooldown(1e4); // cooldown no matter what
 
-    if (session === null || session === undefined) {
+    if (session === null) {
         // session is already expired
         res.status(200).json({
             status: "success",
@@ -50,22 +44,14 @@ const delete_session = async (req, res, next) => {
     });
 };
 
-const auth_session = async (req, res, next) => {
-    const token = String(req.get("X-VAULT-SESSION") || "");
+const auth_session = async (req, res) => {
+    let token, session;
 
-    if (!token.match(/^[a-zA-Z0-9-_]{6,128}$/)) {
-        res.status(400).json({
-            status: "error",
-            error: "missing session key",
-        });
-        req.app.locals.logger.warn(`Vault.session: blocked an attempt to bypass authentication [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
+    try {
+        [token, session] = validate.get_raw_session(req, res);
+    } catch { return } // already handled
 
-    const session = req.app.locals.session.get(token);
-
-    if (session === null || session === undefined) {
+    if (session === null) {
         res.status(410).json({
             status: "error",
             error: "session expired",
@@ -85,8 +71,7 @@ const auth_session = async (req, res, next) => {
         return;
     }
 
-    if (session.strictIPCheck && session.ip !== req.ip) {
-        // not the same ip
+    if (!validate.check_ip(req, session)) {
         res.status(403).json({
             status: "error",
             error: "ip address mismatch",
@@ -96,6 +81,7 @@ const auth_session = async (req, res, next) => {
             }
         });
 
+        console.warn(`Vault.session: ip address mismatch <${session.vault}@vault> [${req.ip}]`);
         req.app.locals.cooldown(req, 5e3);
         return;
     }
@@ -110,18 +96,12 @@ const auth_session = async (req, res, next) => {
         return;
     }
 
-    if (!req.query || !Reflect.has(req.query, "email") ||
-        !req.query.email.match(/^(?:[a-zA-Z0-9.$&+=_~-]{1,255}@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,255}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,255}[a-zA-Z0-9])?){1,9})$/) ||
-        req.query.email.length >= 320) {
-        res.status(400).json({
-            status: "error",
-            error: "invalid email address",
-        });
-        req.app.locals.cooldown(req, 1e3);
-        return;
-    }
+    let email;
+    try {
+        email = validate.get_email(req, res);
+    } catch { return } // already handled
 
-    if (req.query.email.toLowerCase() !== session.email) {
+    if (email !== session.email) {
         res.status(410).json({
             status: "error",
             error: "session expired",
@@ -188,6 +168,8 @@ const auth_session = async (req, res, next) => {
                 status: "error",
                 error: "illegal identity"
             });
+
+            console.error(`Vault.session: dangling session [${req.ip}]`);
             req.app.locals.session.delete(token);
             req.app.locals.cooldown(req, 3e5);
             return;
@@ -246,12 +228,13 @@ const auth_session = async (req, res, next) => {
     // immediately change the session uuid
     const new_uuid = uuidv4();
     req.app.locals.session.set(new_uuid, session);
-    req.app.locals.session.delete(token);
+    req.app.locals.session.delete(token); // revoke the old uuid
 
     res.status(200).json({
         status: "success",
         session: {
             key: new_uuid,
+            secret: session.secret, // give them the session secret (only shared once)
             expires: session.expires,
             identity: session.identity,
         },
@@ -259,30 +242,25 @@ const auth_session = async (req, res, next) => {
 };
 
 const new_session = async (req, res, next) => {
-    if (!req.body || !Reflect.has(req.body, "email") ||
-        !req.body.email.match(/^(?:[a-zA-Z0-9.$&+=_~-]{1,255}@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,255}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,255}[a-zA-Z0-9])?){1,9})$/) ||
-        req.body.email.length >= 320) {
-        res.status(400).json({
-            status: "error",
-            error: "invalid email address",
-        });
-        req.app.locals.cooldown(req, 1e3);
-        return;
-    }
+    let email;
+    try {
+        email = validate.get_email(req, res);
+    } catch { return } // already handled
 
-    const identity = await req.app.locals.vault.identity.findOne({where: {email: req.body.email}});
+    const identity = await req.app.locals.vault.identity.findOne({where: {email: email}});
 
     if (identity === null) {
         // never logged in with this email address
+        const confirm = validate.get_prop(req, "confirm");
 
-        if (Reflect.has(req.body, "confirm") && req.body.confirm === true) {
+        if (confirm) {
             // account creation request
             let uuid;
             do { // avoid collisions
                 uuid =  uuidv4();
             } while (req.app.locals.session.get(uuid));
 
-            const session = new Session(req.ip, req.body.email);
+            const session = new Session(req.ip, email);
             req.app.locals.session.set(uuid, session);
 
             console.log(`Vault.session: starting account creation process [${req.ip}]`);
@@ -292,7 +270,7 @@ const new_session = async (req, res, next) => {
             } else {
                 transporter.sendMail({
                     from: process.env.VAULT__MAILER__FROM,
-                    to: req.body.email,
+                    to: email,
                     subject: "The Mana World account creation",
                     text: "You are receiving this email because someone (you?) has requested to link your email address "+
                            "to a new TMW Vault account.\nIf you did not initiate this process, please ignore this email.\n\n"+
@@ -361,7 +339,7 @@ const new_session = async (req, res, next) => {
                 uuid =  uuidv4();
             } while (req.app.locals.session.get(uuid));
 
-            const session = new Session(req.ip, req.body.email);
+            const session = new Session(req.ip, email);
             session.vault = account.id;
             session.primaryIdentity = account.primaryIdentity;
             session.allowNonPrimary = account.allowNonPrimary;
@@ -376,7 +354,7 @@ const new_session = async (req, res, next) => {
             } else {
                 transporter.sendMail({
                     from: process.env.VAULT__MAILER__FROM,
-                    to: req.body.email,
+                    to: email,
                     subject: "TMW Vault login",
                     text: `Here is your login link:\n${process.env.VAULT__URL__AUTH}${uuid}\n\n` +
                         "TMW staff members will never ask for your login link. Please do not " +

@@ -1,42 +1,16 @@
 "use strict";
+const validate = require("../utils/validate.js");
 
 const regexes = {
     token: /^[a-zA-Z0-9-_]{6,128}$/, // UUID
 };
 
 const get_data = async (req, res, next) => {
-    const token = String(req.get("X-VAULT-SESSION") || "");
+    let session;
 
-    if (!token.match(/^[a-zA-Z0-9-_]{6,128}$/)) {
-        res.status(400).json({
-            status: "error",
-            error: "missing session key",
-        });
-        req.app.locals.logger.warn(`Vault.account: blocked an attempt to bypass authentication [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
-
-    const session = req.app.locals.session.get(token);
-
-    if (session === null || session === undefined) {
-        res.status(410).json({
-            status: "error",
-            error: "session expired",
-        });
-        req.app.locals.cooldown(req, 5e3);
-        return;
-    }
-
-    if (session.authenticated !== true) {
-        res.status(401).json({
-            status: "error",
-            error: "not authenticated",
-        });
-        req.app.locals.logger.warn(`Vault.account: blocked an attempt to bypass authentication [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
+    try {
+        [, session] = validate.get_session(req, res);
+    } catch { return } // already handled
 
     res.status(200).json({
         status: "success",
@@ -45,6 +19,7 @@ const get_data = async (req, res, next) => {
             primaryIdentity: session.primaryIdentity,
             allowNonPrimary: session.allowNonPrimary,
             strictIPCheck: session.strictIPCheck,
+            requireSecret: true,
             vaultId: session.vault,
         },
     });
@@ -52,68 +27,26 @@ const get_data = async (req, res, next) => {
 };
 
 const update_account = async (req, res, next) => {
-    const token = String(req.get("X-VAULT-SESSION") || "");
+    let session;
 
-    if (!token.match(regexes.token)) {
-        res.status(400).json({
-            status: "error",
-            error: "missing session key",
-        });
-        req.app.locals.logger.warn(`Vault.account: blocked an attempt to bypass authentication [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
+    try {
+        [, session] = validate.get_session(req, res);
+    } catch { return } // already handled
 
-    if (!req.body || !Reflect.has(req.body, "primary") || !Reflect.has(req.body, "allow") ||
-        !Reflect.has(req.body, "strict") || !Number.isInteger(req.body.primary)) {
-        res.status(400).json({
-            status: "error",
-            error: "invalid format",
-        });
-        req.app.locals.cooldown(req, 5e3);
-        return;
-    }
-
-    const session = req.app.locals.session.get(token);
-
-    if (session === null || session === undefined) {
-        res.status(410).json({
-            status: "error",
-            error: "session expired",
-        });
-        req.app.locals.cooldown(req, 5e3);
-        return;
-    }
-
-    if (session.authenticated !== true) {
-        res.status(401).json({
-            status: "error",
-            error: "not authenticated",
-        });
-        req.app.locals.logger.warn(`Vault.account: blocked an attempt to bypass authentication [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
-
-    if (session.strictIPCheck && session.ip !== req.ip) {
-        // the ip is not the same
-        res.status(401).json({
-            status: "error",
-            error: "ip address mismatch",
-        });
-        req.app.locals.logger.warn(`Vault.account: ip address mismatch <${session.vault}@vault> [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
+    const data = {
+        primary:  +validate.get_prop(req, "primary"),
+        allow:   !!validate.get_prop(req, "allow"),
+        strict:  !!validate.get_prop(req, "strict"),
+    };
 
     const update_fields = {};
 
-    if (session.primaryIdentity !== req.body.primary) {
+    if (session.primaryIdentity !== data.primary) {
         // update primary identity
         let new_primary = null;
 
         for (const ident of session.identities) {
-            if (ident.id === req.body.primary) {
+            if (ident.id === data.primary) {
                 new_primary = ident.id;
                 break;
             }
@@ -124,19 +57,18 @@ const update_account = async (req, res, next) => {
                 status: "error",
                 error: "not owned by you",
             });
-            req.app.locals.logger.warn(`Vault.account: blocked an attempt to bypass authentication [${req.ip}]`);
             req.app.locals.cooldown(req, 3e5);
         }
 
         update_fields.primaryIdentity = new_primary;
     }
-    if (session.allowNonPrimary !== !!req.body.allow) {
+    if (session.allowNonPrimary !== data.allow) {
         // update allow non-primary
-        update_fields.allowNonPrimary = !!req.body.allow;
+        update_fields.allowNonPrimary = data.allow;
     }
-    if (session.strictIPCheck !== !!req.body.strict) {
+    if (session.strictIPCheck !== data.strict) {
         // update allow non-primary
-        update_fields.strictIPCheck = !!req.body.strict;
+        update_fields.strictIPCheck = data.strict;
     }
 
     // update SQL
@@ -147,9 +79,9 @@ const update_account = async (req, res, next) => {
     }
 
     // now update our cache
-    session.allowNonPrimary = !!req.body.allow;
-    session.strictIPCheck = !!req.body.strict;
-    session.primaryIdentity = +req.body.primary;
+    session.allowNonPrimary = data.allow;
+    session.strictIPCheck = data.strict;
+    session.primaryIdentity = data.primary;
 
     for (const ident of session.identities) {
         if (ident.id === session.primaryIdentity) {

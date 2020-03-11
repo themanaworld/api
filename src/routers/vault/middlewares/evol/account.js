@@ -1,57 +1,13 @@
 "use strict";
 const EvolAccount = require("../../types/EvolAccount.js");
-
-const regexes = {
-    token: /^[a-zA-Z0-9-_]{6,128}$/, // UUID
-    any30: /^[^\s][^\t\r\n]{6,28}[^\s]$/, // herc password (this looks scary)
-    alnum23: /^[a-zA-Z0-9_]{4,23}$/, // mostly for username
-    gid: /^[23][0-9]{6}$/, // account id
-};
+const validate = require("../../utils/validate.js");
 
 const get_accounts = async (req, res, next) => {
-    const token = String(req.get("X-VAULT-SESSION") || "");
+    let session;
 
-    if (!token.match(regexes.token)) {
-        res.status(400).json({
-            status: "error",
-            error: "missing session key",
-        });
-        req.app.locals.logger.warn(`Vault.evol.account: blocked an attempt to bypass authentication [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
-
-    const session = req.app.locals.session.get(token);
-
-    if (session === null || session === undefined) {
-        res.status(410).json({
-            status: "error",
-            error: "session expired",
-        });
-        req.app.locals.cooldown(req, 5e3);
-        return;
-    }
-
-    if (session.authenticated !== true) {
-        res.status(401).json({
-            status: "error",
-            error: "not authenticated",
-        });
-        req.app.locals.logger.warn(`Vault.evol.account: blocked an attempt to bypass authentication [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
-
-    if (session.strictIPCheck && session.ip !== req.ip) {
-        // the ip is not the same
-        res.status(403).json({
-            status: "error",
-            error: "ip address mismatch",
-        });
-        req.app.locals.logger.warn(`Vault.evol.account: ip address mismatch <${session.vault}@vault> [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
+    try {
+        [, session] = validate.get_session(req, res);
+    } catch { return } // already handled
 
     res.status(200).json({
         status: "success",
@@ -62,22 +18,18 @@ const get_accounts = async (req, res, next) => {
 };
 
 const new_account = async (req, res, next) => {
-    const token = String(req.get("X-VAULT-SESSION") || "");
+    let session;
 
-    if (!token.match(regexes.token)) {
-        res.status(400).json({
-            status: "error",
-            error: "missing session key",
-        });
-        req.app.locals.logger.warn(`Vault.evol.account: blocked an attempt to bypass authentication [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
+    try {
+        [, session] = validate.get_session(req, res);
+    } catch { return } // already handled
 
-    if (!req.body ||
-        !Reflect.has(req.body, "username") || !Reflect.has(req.body, "password") ||
-        !req.body.username.match(regexes.alnum23) ||
-        !req.body.password.match(regexes.any30)) { // FIXME: this is unsafe: can cause a promise rejection if something else than a string is passed (no Number.match() exists)
+    const data = {
+        username: validate.get_prop(req, "username", validate.regexes.alnum23),
+        password: validate.get_prop(req, "password", validate.regexes.any30),
+    };
+
+    if (!data.username || !data.password) {
         res.status(400).json({
             status: "error",
             error: "invalid format",
@@ -86,41 +38,9 @@ const new_account = async (req, res, next) => {
         return;
     }
 
-    const session = req.app.locals.session.get(token);
-
-    if (session === null || session === undefined) {
-        res.status(410).json({
-            status: "error",
-            error: "session expired",
-        });
-        req.app.locals.cooldown(req, 5e3);
-        return;
-    }
-
-    if (session.authenticated !== true) {
-        res.status(401).json({
-            status: "error",
-            error: "not authenticated",
-        });
-        req.app.locals.logger.warn(`Vault.evol.account: blocked an attempt to bypass authentication [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
-
-    if (session.strictIPCheck && session.ip !== req.ip) {
-        // the ip is not the same
-        res.status(403).json({
-            status: "error",
-            error: "ip address mismatch",
-        });
-        req.app.locals.logger.warn(`Vault.evol.account: ip address mismatch <${session.vault}@vault> [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
-
     // this check is necessary because login.userid has no UNIQUE constraint
     const existing = await req.app.locals.evol.login.findOne({
-        where: {userid: req.body.username}
+        where: {userid: data.username}
     });
 
     if (existing !== null) {
@@ -133,8 +53,8 @@ const new_account = async (req, res, next) => {
     }
 
     const evol_acc = await req.app.locals.evol.login.create({
-        userid: req.body.username,
-        userPass: req.body.password,
+        userid: data.username,
+        userPass: data.password,
         email: `${session.vault}@vault`, // setting an actual email is pointless
     });
 
@@ -167,22 +87,19 @@ const new_account = async (req, res, next) => {
 };
 
 const update_account = async (req, res, next) => {
-    const token = String(req.get("X-VAULT-SESSION") || "");
+    let session;
 
-    if (!token.match(regexes.token)) {
-        res.status(400).json({
-            status: "error",
-            error: "missing session key",
-        });
-        req.app.locals.logger.warn(`Vault.evol.account: blocked an attempt to bypass authentication [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
+    try {
+        [, session] = validate.get_session(req, res);
+    } catch { return } // already handled
 
-    if (!req.body || !Reflect.has(req.body, "accountId") ||
-        !String(req.body.accountId).match(regexes.gid) || !(
-        (Reflect.has(req.body, "username") && req.body.username.match(regexes.alnum23)) ||
-        (Reflect.has(req.body, "password") && req.body.password.match(regexes.any30)))) { // FIXME: this is unsafe: can cause a promise rejection if something else than a string is passed (no Number.match() exists)
+    const data = {
+        accountId: +validate.get_prop(req, "accountId", validate.regexes.gid),
+        username:   validate.get_prop(req, "username", validate.regexes.alnum23),
+        password:   validate.get_prop(req, "password", validate.regexes.any30),
+    };
+
+    if (!data.username && !data.password) {
         res.status(400).json({
             status: "error",
             error: "invalid format",
@@ -191,41 +108,9 @@ const update_account = async (req, res, next) => {
         return;
     }
 
-    const session = req.app.locals.session.get(token);
-
-    if (session === null || session === undefined) {
-        res.status(410).json({
-            status: "error",
-            error: "session expired",
-        });
-        req.app.locals.cooldown(req, 5e3);
-        return;
-    }
-
-    if (session.authenticated !== true) {
-        res.status(401).json({
-            status: "error",
-            error: "not authenticated",
-        });
-        req.app.locals.logger.warn(`Vault.evol.account: blocked an attempt to bypass authentication [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
-
-    if (session.strictIPCheck && session.ip !== req.ip) {
-        // the ip is not the same
-        res.status(403).json({
-            status: "error",
-            error: "ip address mismatch",
-        });
-        req.app.locals.logger.warn(`Vault.evol.account: ip address mismatch <${session.vault}@vault> [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
-
     let account = null;
     for (const acc of session.gameAccounts) {
-        if (acc.accountId === req.body.accountId) {
+        if (acc.accountId === data.accountId) {
             account = acc;
             break;
         }
@@ -242,10 +127,10 @@ const update_account = async (req, res, next) => {
     }
 
     let update_fields = {};
-    if (Reflect.has(req.body, "username")) {
+    if (data.username) {
         // check if the name exists
         const existing = await req.app.locals.evol.login.findOne({
-            where: {userid: req.body.username}
+            where: {userid: data.username}
         });
 
         if (existing !== null) {
@@ -258,9 +143,9 @@ const update_account = async (req, res, next) => {
         }
 
         update_fields = {
-            userid: req.body.username,
+            userid: data.username,
         };
-        account.name  = req.body.username;
+        account.name  = data.username;
         req.app.locals.logger.info(`Vault.evol.account: changed username of game account ${account.accountId} <${session.vault}@vault> [${req.ip}]`);
         req.app.locals.vault.account_log.create({
             vaultId: session.vault,
@@ -272,7 +157,7 @@ const update_account = async (req, res, next) => {
         });
     } else {
         update_fields = {
-            userPass: req.body.password,
+            userPass: data.password,
         };
         req.app.locals.logger.info(`Vault.evol.account: changed password of game account ${account.accountId} <${session.vault}@vault> [${req.ip}]`);
         req.app.locals.vault.account_log.create({

@@ -2,6 +2,7 @@
 const uuidv4 = require("uuid/v4");
 const nodemailer = require("nodemailer");
 const Claim = require("../utils/claim.js");
+const validate = require("../utils/validate.js");
 
 let transporter = nodemailer.createTransport({
     sendmail: true,
@@ -10,38 +11,11 @@ let transporter = nodemailer.createTransport({
 });
 
 const get_identities = async (req, res, next) => {
-    const token = String(req.get("X-VAULT-SESSION") || "");
+    let session;
 
-    if (!token.match(/^[a-zA-Z0-9-_]{6,128}$/)) {
-        res.status(400).json({
-            status: "error",
-            error: "missing session key",
-        });
-        req.app.locals.logger.warn(`Vault.identity: blocked an attempt to bypass authentication [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
-
-    const session = req.app.locals.session.get(token);
-
-    if (session === null || session === undefined) {
-        res.status(410).json({
-            status: "error",
-            error: "session expired",
-        });
-        req.app.locals.cooldown(req, 5e3);
-        return;
-    }
-
-    if (session.authenticated !== true) {
-        res.status(401).json({
-            status: "error",
-            error: "not authenticated",
-        });
-        req.app.locals.logger.warn(`Vault.identity: blocked an attempt to bypass authentication [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
+    try {
+        [, session] = validate.get_session(req, res);
+    } catch { return } // already handled
 
     if (session.identities.length === 0) {
         console.info(`Vault.identity: fetching identities <${session.vault}@vault> [${req.ip}]`);
@@ -69,19 +43,19 @@ const get_identities = async (req, res, next) => {
 
 const add_identity = async (req, res, next) => {
     const token = String(req.get("X-VAULT-SESSION") || "");
-    const validate = String(req.get("X-VAULT-TOKEN") || "");
+    const secret = String(req.get("X-VAULT-TOKEN") || "");
 
-    if (token === "" && validate !== "") {
-        if (!validate.match(/^[a-zA-Z0-9-_]{6,128}$/)) {
+    if (token === "" && secret !== "") {
+        if (!secret.match(validate.regexes.uuid)) {
             res.status(400).json({
                 status: "error",
-                error: "missing token",
+                error: "missing secret",
             });
             req.app.locals.cooldown(req, 5e3);
             return;
         }
 
-        const ident = req.app.locals.identity_pending.get(validate);
+        const ident = req.app.locals.identity_pending.get(secret);
 
         if (ident === null || ident === undefined) {
             res.status(410).json({
@@ -128,7 +102,7 @@ const add_identity = async (req, res, next) => {
             }
         }
 
-        req.app.locals.identity_pending.delete(validate);
+        req.app.locals.identity_pending.delete(secret);
 
         if (session !== null) {
             console.info(`Vault.identity: added a new identity <${session.vault}@vault> [${req.ip}]`);
@@ -145,50 +119,19 @@ const add_identity = async (req, res, next) => {
 
     // request to add
 
-    if (!token.match(/^[a-zA-Z0-9-_]{6,128}$/)) {
-        res.status(400).json({
-            status: "error",
-            error: "missing session key",
-        });
-        req.app.locals.logger.warn(`Vault.identity: blocked an attempt to bypass authentication [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
+    let session;
 
-    if (!req.body || !Reflect.has(req.body, "email") ||
-        !req.body.email.match(/^(?:[a-zA-Z0-9.$&+=_~-]{1,255}@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,255}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,255}[a-zA-Z0-9])?){1,9})$/) ||
-        req.body.email.length >= 320) {
-        res.status(400).json({
-            status: "error",
-            error: "invalid email address",
-        });
-        req.app.locals.cooldown(req, 1e3);
-        return;
-    }
+    try {
+        [, session] = validate.get_session(req, res);
+    } catch { return } // already handled
 
-    const session = req.app.locals.session.get(token);
-
-    if (session === null || session === undefined) {
-        res.status(410).json({
-            status: "error",
-            error: "session expired",
-        });
-        req.app.locals.cooldown(req, 5e3);
-        return;
-    }
-
-    if (session.authenticated !== true) {
-        res.status(401).json({
-            status: "error",
-            error: "not authenticated",
-        });
-        req.app.locals.logger.warn(`Vault.identity: blocked an attempt to bypass authentication [${req.ip}]`);
-        req.app.locals.cooldown(req, 3e5);
-        return;
-    }
+    let email;
+    try {
+        email = validate.get_email(req, res);
+    } catch { return } // already handled
 
     for (const [key, pending] of req.app.locals.identity_pending) {
-        if (pending.vault === session.vault && pending.email === req.body.email) {
+        if (pending.vault === session.vault && pending.email === email) {
             res.status(425).json({
                 status: "error",
                 error: "already pending",
@@ -199,7 +142,7 @@ const add_identity = async (req, res, next) => {
     }
 
     const find = await req.app.locals.vault.identity.findOne({
-        where: {email: req.body.email}
+        where: {email}
     });
 
     if (find !== null) {
@@ -232,7 +175,7 @@ const add_identity = async (req, res, next) => {
     req.app.locals.identity_pending.set(uuid, {
         ip: req.ip,
         vault: session.vault,
-        email: req.body.email,
+        email: email,
     });
 
     console.log(`Vault.session: starting identity validation <${session.vault}@vault> [${req.ip}]`);
@@ -243,7 +186,7 @@ const add_identity = async (req, res, next) => {
         // TODO: limit total number of emails that can be dispatched by a single ip in an hour
         transporter.sendMail({
             from: process.env.VAULT__MAILER__FROM,
-            to: req.body.email,
+            to: email,
             subject: "The Mana World identity validation",
             text: "You are receiving this email because someone (you?) has requested to link your email address "+
                    "to a TMW Vault account.\nIf you did not initiate this process, please ignore this email.\n\n"+
@@ -258,14 +201,6 @@ const add_identity = async (req, res, next) => {
     req.app.locals.cooldown(req, 5e3);
 };
 
-const update_identity = async (req, res, next) => {
-    // TODO
-};
-
-const drop_identity = async (req, res, next) => {
-    // TODO
-};
-
 module.exports = exports = async (req, res, next) => {
     switch(req.method) {
         case "GET":
@@ -274,11 +209,8 @@ module.exports = exports = async (req, res, next) => {
         case "POST":
             // add identity
             return await add_identity(req, res, next);
-        case "PATCH":
-            // set as primary
-            //return await update_identity(req, res, next);
         case "DELETE":
-            // remove an identity
+            // TODO: remove an identity
             //return await drop_identity(req, res, next);
         default:
             next(); // fallthrough to default endpoint (404)
