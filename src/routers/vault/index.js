@@ -1,6 +1,7 @@
 const express = require("express"); // from npm registry
 const Sequelize = require("sequelize"); // from npm registry
 const Ephemeral = require("./utils/ephemeral.js");
+const SessionStore = require("./types/SessionStore.js");
 
 const models = {
     vault: [
@@ -46,7 +47,7 @@ module.exports = exports = class Vault {
         //      to middlewares, so we might have to curry them
 
         this.api = api;
-        this.api.locals.session = Ephemeral.session_handler;
+        this.api.locals.session = new SessionStore();
         this.api.locals.identity_pending = Ephemeral.identity_handler;
         this.router = express.Router(["caseSensitive", "strict"]);
         this.sequelize = {};
