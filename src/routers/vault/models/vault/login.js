@@ -18,8 +18,9 @@ module.exports = {
             allowNull: false,
         },
         strictIPCheck: {
+            field: "strict_ip_check",
             type: Sequelize.BOOLEAN,
-            defaultValue: true,
+            defaultValue: false,
             allowNull: false,
         },
         creationDate: {
