@@ -3,6 +3,7 @@ const uuidv4 = require("uuid/v4");
 const nodemailer = require("nodemailer");
 const Claim = require("../utils/claim.js");
 const validate = require("../utils/validate.js");
+const Identity = require("../types/Identity.js");
 
 let transporter = nodemailer.createTransport({
     sendmail: true,
@@ -19,18 +20,14 @@ const get_identities = async (req, res, next) => {
 
     if (session.identities.length === 0) {
         console.info(`Vault.identity: fetching identities <${session.vault}@vault> [${req.ip}]`);
+        /** @type {Identity[]} */
         const rows = await req.app.locals.vault.identity.findAll({
             where: {userId: session.vault}
         });
 
-        for (const row of rows) {
-            session.identities.push({
-                // TODO: make this a class!
-                id: row.id,
-                email: row.email,
-                added: row.addedDate,
-                primary: session.primaryIdentity === row.id,
-            });
+        for (const ident of rows) {
+            ident.isPrimary = session.primaryIdentity.id === ident.id;
+            session.identities.push(ident);
         }
     }
 
@@ -55,6 +52,7 @@ const add_identity = async (req, res, next) => {
             return;
         }
 
+        // TODO: make an IdentityStore type similar to SessionStore and get rid of Ephemeral
         const ident = req.app.locals.identity_pending.get(secret);
 
         if (ident === null || ident === undefined) {
@@ -73,6 +71,7 @@ const add_identity = async (req, res, next) => {
             return;
         }
 
+        /** @type {Identity} */
         const newIdent = await req.app.locals.vault.identity.create({
             userId: ident.vault,
             email: ident.email,
@@ -87,16 +86,11 @@ const add_identity = async (req, res, next) => {
 
         await Claim.claim_accounts(req, ident.email, ident.vault);
 
+        /** @type {Session} */
         let session = null;
-        for (const [key, sess] of req.app.locals.session) {
+        for (const [, sess] of req.app.locals.session) {
             if (sess.vault === ident.vault && sess.authenticated) {
-                sess.identities.push({
-                    // TODO: make this a class!
-                    id: newIdent.id,
-                    email: newIdent.email,
-                    added: newIdent.addedDate,
-                    primary: false,
-                });
+                sess.identities.push(newIdent);
                 session = sess;
                 break;
             }
@@ -119,18 +113,14 @@ const add_identity = async (req, res, next) => {
 
     // request to add
 
-    let session;
+    let session, email;
 
     try {
         [, session] = validate.get_session(req, res);
-    } catch { return } // already handled
-
-    let email;
-    try {
         email = validate.get_email(req, res);
     } catch { return } // already handled
 
-    for (const [key, pending] of req.app.locals.identity_pending) {
+    for (const [, pending] of req.app.locals.identity_pending) {
         if (pending.vault === session.vault && pending.email === email) {
             res.status(425).json({
                 status: "error",
@@ -141,9 +131,38 @@ const add_identity = async (req, res, next) => {
         }
     }
 
-    const find = await req.app.locals.vault.identity.findOne({
-        where: {email}
-    });
+    if (session.identities.length === 0) {
+        // we did not have enough time to fetch, so cowardly refuse
+        res.status(409).json({
+            status: "error",
+            error: "already assigned",
+        });
+        req.app.locals.cooldown(req, 5e3);
+        return;
+    } else if (session.identities.length >= 20) {
+        res.status(416).json({
+            status: "error",
+            error: "too many identities",
+        });
+        req.app.locals.cooldown(req, 3e4);
+        return;
+    }
+
+    /** @type {Identity} */
+    let find = null;
+
+    for (const ident of session.identities) {
+        if (ident.email === email) {
+            find = ident;
+            break;
+        }
+    }
+
+    if (find === null) {
+        find = await req.app.locals.vault.identity.findOne({
+            where: {email}
+        });
+    }
 
     if (find !== null) {
         res.status(409).json({
@@ -151,19 +170,6 @@ const add_identity = async (req, res, next) => {
             error: "already assigned",
         });
         req.app.locals.cooldown(req, 5e3);
-        return;
-    }
-
-    const count = await req.app.locals.vault.identity.count({
-        where: {userId: session.vault}
-    });
-
-    if (count >= 20) {
-        res.status(416).json({
-            status: "error",
-            error: "too many identities",
-        });
-        req.app.locals.cooldown(req, 3e4);
         return;
     }
 

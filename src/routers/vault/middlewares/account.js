@@ -1,11 +1,9 @@
 "use strict";
 const validate = require("../utils/validate.js");
-
-const regexes = {
-    token: /^[a-zA-Z0-9-_]{6,128}$/, // UUID
-};
+const Session = require("../types/Session.js");
 
 const get_data = async (req, res, next) => {
+    /** @type {Session} */
     let session;
 
     try {
@@ -14,14 +12,7 @@ const get_data = async (req, res, next) => {
 
     res.status(200).json({
         status: "success",
-        data: {
-            // TODO: make this a method of Session
-            primaryIdentity: session.primaryIdentity,
-            allowNonPrimary: session.allowNonPrimary,
-            strictIPCheck: session.strictIPCheck,
-            requireSecret: true,
-            vaultId: session.vault,
-        },
+        data: session.getAccountData(),
     });
     req.app.locals.cooldown(req, 1e3);
 };
@@ -35,19 +26,20 @@ const update_account = async (req, res, next) => {
 
     const data = {
         primary:  +validate.get_prop(req, "primary"),
-        allow:   !!validate.get_prop(req, "allow"),
-        strict:  !!validate.get_prop(req, "strict"),
+        allow:     validate.get_prop(req, "allow") === "true",
+        strict:    validate.get_prop(req, "strict") === "true",
     };
 
     const update_fields = {};
 
-    if (session.primaryIdentity !== data.primary) {
+    if (session.primaryIdentity.id !== data.primary) {
         // update primary identity
         let new_primary = null;
 
         for (const ident of session.identities) {
             if (ident.id === data.primary) {
                 new_primary = ident.id;
+                session.primaryIdentity = ident;
                 break;
             }
         }
@@ -81,13 +73,13 @@ const update_account = async (req, res, next) => {
     // now update our cache
     session.allowNonPrimary = data.allow;
     session.strictIPCheck = data.strict;
-    session.primaryIdentity = data.primary;
 
     for (const ident of session.identities) {
-        if (ident.id === session.primaryIdentity) {
-            ident.primary = true;
-        } else if (ident.primary === true) {
-            ident.primary = false;
+        if (ident.id === session.primaryIdentity.id) {
+            ident.isPrimary = true;
+            session.primaryIdentity = ident;
+        } else if (ident.isPrimary === true) {
+            ident.isPrimary = false;
         }
     }
 

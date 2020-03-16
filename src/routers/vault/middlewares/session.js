@@ -5,6 +5,7 @@ const Claim = require("../utils/claim.js");
 const Session = require("../types/Session.js");
 const game_accounts = require("../utils/game_accounts.js");
 const validate = require("../utils/validate.js");
+const Identity = require("../types/Identity.js");
 
 let transporter = nodemailer.createTransport({
     sendmail: true,
@@ -131,6 +132,7 @@ const auth_session = async (req, res) => {
             ip: req.app.locals.sequelize.vault.fn("INET6_ATON", req.ip),
         });
 
+        /** @type {Identity} */
         const ident = await req.app.locals.vault.identity.create({
             userId: user.id,
             email: session.email,
@@ -151,16 +153,11 @@ const auth_session = async (req, res) => {
 
         // update current session
         session.vault = user.id;
-        session.identity = ident.id;
-        session.primaryIdentity = ident.id;
+        session.identity = ident;
+        session.primaryIdentity = ident;
         session.allowNonPrimary = user.allowNonPrimary;
         session.strictIPCheck = user.strictIPCheck;
-        session.identities = [{
-            // TODO: make this a class!
-            email: ident.email,
-            added: ident.addedDate,
-            primary: true,
-        }];
+        session.identities.push(ident);
     } else {
         if (session.identity !== session.primaryIdentity && !session.allowNonPrimary) {
             // unexpected: a session was created when it shouldn't have been
@@ -202,13 +199,11 @@ const auth_session = async (req, res) => {
 
     if (session.identity !== session.primaryIdentity) {
         // user did not log in with their primary identity
-        const primary = await req.app.locals.vault.identity.findByPk(session.primaryIdentity);
-
-        if (primary === null || primary === undefined) {
+        if (session.primaryIdentity === null || session.primaryIdentity === undefined) {
             // the vault account has no primary identity (bug): let's fix this
             console.warn(`Vault.session: fixing account with a deleted primary identity <${session.vault}@vault> [${req.ip}]`);
             await req.app.locals.vault.login.update({
-                primaryIdentity: session.identity,
+                primaryIdentity: session.identity.id,
             }, {where: {
                 id: session.vault,
             }});
@@ -216,7 +211,7 @@ const auth_session = async (req, res) => {
         } else {
             transporter.sendMail({
                 from: process.env.VAULT__MAILER__FROM,
-                to: primary.email,
+                to: session.primaryIdentity.email,
                 subject: "The Mana World security notice",
                 text: "Someone has logged in to your Vault account using an email address that " +
                         "is not your primary address. If this wasn't you, please contact us immediately.\n\n" +
@@ -236,7 +231,7 @@ const auth_session = async (req, res) => {
             key: new_uuid,
             secret: session.secret, // give them the session secret (only shared once)
             expires: session.expires,
-            identity: session.identity,
+            identity: session.identity.id,
         },
     });
 };
@@ -247,6 +242,7 @@ const new_session = async (req, res, next) => {
         email = validate.get_email(req, res);
     } catch { return } // already handled
 
+    /** @type {Identity} */
     const identity = await req.app.locals.vault.identity.findOne({where: {email: email}});
 
     if (identity === null) {
@@ -305,7 +301,7 @@ const new_session = async (req, res, next) => {
             return;
         }
     } else {
-        const account = await req.app.locals.vault.login.findOne({where: {id: identity.userId}});
+        const account = await req.app.locals.vault.login.findByPk(identity.userId);
         if (account === null) {
             // unexpected: the account was deleted but not its identities
             console.log(`Vault.session: removing dangling identity [${req.ip}]`);
@@ -317,13 +313,25 @@ const new_session = async (req, res, next) => {
             req.app.locals.cooldown(req, 3e5);
             return;
         } else {
+            /** @type {Identity} */
+            let primary = null;
+
+            if (identity.id !== account.primaryIdentity) {
+                try {
+                    primary = await req.app.locals.vault.identity.findByPk(account.primaryIdentity);
+                } catch {}
+            } else {
+                primary = identity;
+            }
+
             // auth flow
-            if (account.primaryIdentity === null || account.primaryIdentity === undefined) {
+            if (primary === null) {
                 // the vault account has no primary identity (bug): let's fix this
                 console.warn(`Vault.session: fixing account with no primary identity <${account.id}@vault> [${req.ip}]`);
                 account.primaryIdentity = identity.id;
+                primary = identity;
                 await account.save();
-            } else if (identity.id !== account.primaryIdentity && !account.allowNonPrimary) {
+            } else if (identity.id !== primary.id && !account.allowNonPrimary) {
                 res.status(423).json({
                     status: "error",
                     error: "non-primary login is disabled",
@@ -341,10 +349,10 @@ const new_session = async (req, res, next) => {
 
             const session = new Session(req.ip, email);
             session.vault = account.id;
-            session.primaryIdentity = account.primaryIdentity;
+            session.primaryIdentity = primary;
             session.allowNonPrimary = account.allowNonPrimary;
             session.strictIPCheck = account.strictIPCheck;
-            session.identity = identity.id;
+            session.identity = identity;
             req.app.locals.session.set(uuid, session);
 
             console.log(`Vault.session: starting authentication with identity ${identity.id} [${req.ip}]`);

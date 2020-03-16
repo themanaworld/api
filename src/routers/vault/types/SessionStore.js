@@ -3,7 +3,7 @@ const Session = require("./Session.js");
 
 /**
  * we store the timeout directly in Session instances
- * @type Symbol("session timeout")
+ * @type {Symbol("session timeout")}
  */
 const timeout_symbol = Symbol("session timeout");
 
@@ -13,7 +13,7 @@ const timeout_symbol = Symbol("session timeout");
 class SessionStore {
     /**
      * a Map of all Session instances
-     * @type Map<string, Session>
+     * @type {Map<string, Session>}
     */
     sessions = new Map();
     /** lifetime of an unauthenticated Session, in minutes */

@@ -6,7 +6,7 @@ const SessionStore = require("./types/SessionStore.js");
 const models = {
     vault: [
         "login", "login_log",
-        "identity", "identity_log",
+        /*"identity",*/ "identity_log",
         "claimed_game_accounts",
         "claimed_legacy_accounts",
         "account_log",
@@ -105,6 +105,9 @@ module.exports = exports = class Vault {
 
             console.info(`Vault: loaded models for ${DB}`);
         }
+
+        const Identity = require("./types/Identity.js");
+        this.api.locals.vault.identity = Identity.define(this.sequelize.vault);
 
         await this.sequelize.vault.sync({alter: {drop: false}}); // update SQL tables
 
