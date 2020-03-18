@@ -145,7 +145,7 @@ const update_account = async (req, res, next) => {
         update_fields = {
             userid: data.username,
         };
-        account.name  = data.username;
+        account.userid  = data.username;
         req.app.locals.logger.info(`Vault.evol.account: changed username of game account ${account.accountId} <${session.vault}@vault> [${req.ip}]`);
         req.app.locals.vault.account_log.create({
             vaultId: session.vault,
