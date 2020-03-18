@@ -23,6 +23,8 @@ module.exports = {
         },
     },
     options: {
+        tableName: "identity",
+        freezeTableName: true,
         indexes: [
             {
                 fields: ["user_id"],  // BUG: table option {underscored: true} does not work on indexes
