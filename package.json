@@ -1,6 +1,6 @@
 {
     "name": "tmw-api",
-    "version": "2.2.0",
+    "version": "2.3.0",
     "description": "TMW RESTful API",
     "author": "The Mana World",
     "license": "CC0-1.0",
@@ -24,11 +24,10 @@
         "mariadb": "^2.2.0",
         "mysql": "^2.18.1",
         "node-fetch": "^2.6.0",
-        "nodemailer": "^6.4.2",
+        "nodemailer": "^6.4.5",
         "ripgrep-bin": "^11.0.1",
-        "sequelize": "^5.21.4",
+        "sequelize": "^5.21.5",
         "sequelize-cli": "^5.5.1",
         "uuid": "^3.4.0"
-    },
-    "devDependencies": {}
+    }
 }
