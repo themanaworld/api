@@ -358,7 +358,16 @@ const new_session = async (req, res, next) => {
             console.log(`Vault.session: starting authentication with identity ${identity.id} [${req.ip}]`);
 
             if (process.env.NODE_ENV === "development") {
-                console.log(`uuid: ${uuid}`);
+                if (process.env.VAULT__BYPASS_LOGIN === "bypass") {
+                    // don't require copy-pasting the uuid
+                    res.status(200).json({
+                        status: "success",
+                        key: uuid,
+                    });
+                } else {
+                    console.log(`uuid: ${uuid}`);
+                }
+                return;
             } else {
                 transporter.sendMail({
                     from: process.env.VAULT__MAILER__FROM,
