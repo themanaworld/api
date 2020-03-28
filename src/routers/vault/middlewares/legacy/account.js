@@ -225,6 +225,13 @@ const migrate = async (req, res, next) => {
         email: `${session.vault}@vault`, // setting an actual email is pointless
     });
 
+    // store the vault account id as a global account var
+    await req.app.locals.evol.global_acc_reg_num_db.create({
+        accountId: evol_acc.accountId,
+        key: "##VAULT", index: 0,
+        value: session.vault,
+    });
+
     req.app.locals.vault.migration_log.create({
         vaultId: session.vault,
         legacyId: legacy.accountId,
@@ -237,8 +244,6 @@ const migrate = async (req, res, next) => {
         accountId: evol_acc.accountId,
         vaultId: session.vault,
     });
-
-    // TODO: set an account variable with the original legacy account id
 
     const evol_account = new EvolAccount(evol_acc.accountId, evol_acc.userid);
     evol_account.legacyId = legacy.accountId;
@@ -277,7 +282,14 @@ const migrate = async (req, res, next) => {
             continue;
         }
 
-        // TODO: set a variable in the char with the original legacy char id
+        // update the Legacy flags:
+        // for now we're only using a single bit but this can be expanded when
+        // we need it in the future
+        await req.app.locals.evol.char_reg_num_db.create({
+            charId: evol_char.charId,
+            key: "LEGACY", index: 0,
+            value: 0b00000000_00000000_00000000_00000001, // set the Legacy bit
+        });
 
         // remove the name reservation
         req.app.locals.evol.char_reservation.destroy({

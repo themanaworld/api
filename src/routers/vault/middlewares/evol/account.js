@@ -58,6 +58,13 @@ const new_account = async (req, res, next) => {
         email: `${session.vault}@vault`, // setting an actual email is pointless
     });
 
+    // store the vault account id as a global account var
+    await req.app.locals.evol.global_acc_reg_num_db.create({
+        accountId: evol_acc.accountId,
+        key: "##VAULT", index: 0,
+        value: session.vault,
+    });
+
     req.app.locals.vault.account_log.create({
         vaultId: session.vault,
         accountType: "EVOL",

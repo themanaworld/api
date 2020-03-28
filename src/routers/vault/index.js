@@ -26,6 +26,8 @@ const models = {
         "login",
         "char",
         "char_reservation",
+        "global_acc_reg_num_db",
+        "char_reg_num_db",
     ],
 };
 
@@ -111,7 +113,6 @@ module.exports = exports = class Vault {
 
         await this.sequelize.vault.sync({alter: {drop: false}}); // update SQL tables
 
-        this.api.locals.sequelize = this.sequelize; // for access to sequelize.fn
         console.info("Vault: database ready");
 
         return Promise.resolve(true);
