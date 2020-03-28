@@ -76,7 +76,7 @@ const get_prop = (req, prop, regex = null) => {
  * @param {Request}
  * @returns {string} the session secret
  */
-const get_secret = (req) => {
+const get_secret = (req, res) => {
     const token = req.get("X-VAULT-TOKEN") || "";
 
     if (!token.match(regexes.uuid)) {
@@ -176,7 +176,7 @@ const get_session = (req, res) => {
     return [token, session];
 };
 
-const get_email = (req) => {
+const get_email = (req, res) => {
     const email = get_prop(req, "email");
 
     if (!email.match(regexes.email) || email.length >= 320) {

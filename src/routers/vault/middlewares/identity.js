@@ -55,7 +55,12 @@ const add_identity = async (req, res, next) => {
         // TODO: make an IdentityStore type similar to SessionStore and get rid of Ephemeral
         const ident = req.app.locals.identity_pending.get(secret);
 
-        if (ident === null || ident === undefined) {
+        let email;
+        try {
+            email = validate.get_email(req, res);
+        } catch { return } // already handled
+
+        if (ident === null || ident === undefined || ident.email !== email) {
             res.status(410).json({
                 status: "error",
                 error: "token has expired",
@@ -106,6 +111,7 @@ const add_identity = async (req, res, next) => {
 
         res.status(201).json({
             status: "success",
+            identity: newIdent,
         });
         req.app.locals.cooldown(req, 6e4);
         return;
