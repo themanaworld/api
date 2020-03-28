@@ -33,7 +33,7 @@ const delete_session = async (req, res) => {
     req.app.locals.vault.login_log.create({
         userId: session.vault,
         action: "LOGOUT",
-        ip: req.app.locals.sequelize.vault.fn("INET6_ATON", req.ip),
+        ip: req.ip,
     });
 
     req.app.locals.session.delete(token);
@@ -129,7 +129,7 @@ const auth_session = async (req, res) => {
         req.app.locals.vault.login_log.create({
             userId: user.id,
             action: "CREATE",
-            ip: req.app.locals.sequelize.vault.fn("INET6_ATON", req.ip),
+            ip: req.ip,
         });
 
         /** @type {Identity} */
@@ -142,7 +142,7 @@ const auth_session = async (req, res) => {
             userId: user.id,
             identityId: ident.id,
             action: "ADD",
-            ip: req.app.locals.sequelize.vault.fn("INET6_ATON", req.ip),
+            ip: req.ip,
         });
 
         user.primaryIdentity = ident.id;
@@ -194,7 +194,7 @@ const auth_session = async (req, res) => {
     req.app.locals.vault.login_log.create({
         userId: session.vault,
         action: "LOGIN",
-        ip: req.app.locals.sequelize.vault.fn("INET6_ATON", req.ip),
+        ip: req.ip,
     });
 
     if (session.identity !== session.primaryIdentity) {

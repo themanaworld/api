@@ -81,7 +81,7 @@ const add_identity = async (req, res, next) => {
             userId: ident.vault,
             identityId: newIdent.id,
             action: "ADD",
-            ip: req.app.locals.sequelize.vault.fn("INET6_ATON", req.ip),
+            ip: req.ip,
         });
 
         await Claim.claim_accounts(req, ident.email, ident.vault);

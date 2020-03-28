@@ -47,7 +47,7 @@ const claim_accounts = async (req, email, vault_id, session = null) => {
             accountType: "LEGACY",
             actionType: "LINK",
             accountId: acc.accountId,
-            ip: req.app.locals.sequelize.vault.fn("INET6_ATON", req.ip),
+            ip: req.ip,
         });
 
         if (session !== null) {

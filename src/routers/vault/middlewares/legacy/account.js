@@ -119,7 +119,7 @@ const claim_by_password = async (req, res, next) => {
         accountType: "LEGACY",
         actionType: "LINK",
         accountId: legacy.accountId,
-        ip: req.app.locals.sequelize.vault.fn("INET6_ATON", req.ip),
+        ip: req.ip,
     });
 
     // now we must update the session cache:
@@ -229,7 +229,7 @@ const migrate = async (req, res, next) => {
         vaultId: session.vault,
         legacyId: legacy.accountId,
         accountId: evol_acc.accountId,
-        ip: req.app.locals.sequelize.vault.fn("INET6_ATON", req.ip),
+        ip: req.ip,
     });
 
     // immediately claim it

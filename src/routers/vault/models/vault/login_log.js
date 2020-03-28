@@ -25,6 +25,9 @@ module.exports = {
         ip: {
             type: "VARBINARY(16)",
             allowNull: false,
+            set (raw) {
+                this.setDataValue("ip", Sequelize.fn("INET6_ATON", raw));
+            },
         },
         date: {
             type: Sequelize.DATE,

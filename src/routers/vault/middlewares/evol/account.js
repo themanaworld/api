@@ -63,7 +63,7 @@ const new_account = async (req, res, next) => {
         accountType: "EVOL",
         actionType: "CREATE",
         accountId: evol_acc.accountId,
-        ip: req.app.locals.sequelize.vault.fn("INET6_ATON", req.ip),
+        ip: req.ip,
     });
 
     // immediately claim it
@@ -153,7 +153,7 @@ const update_account = async (req, res, next) => {
             actionType: "UPDATE",
             details: "username",
             accountId: account.accountId,
-            ip: req.app.locals.sequelize.vault.fn("INET6_ATON", req.ip),
+            ip: req.ip,
         });
     } else {
         update_fields = {
@@ -166,7 +166,7 @@ const update_account = async (req, res, next) => {
             actionType: "UPDATE",
             details: "password",
             accountId: account.accountId,
-            ip: req.app.locals.sequelize.vault.fn("INET6_ATON", req.ip),
+            ip: req.ip,
         });
     }
 
