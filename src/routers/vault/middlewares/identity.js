@@ -193,7 +193,16 @@ const add_identity = async (req, res, next) => {
     console.log(`Vault.session: starting identity validation <${session.vault}@vault> [${req.ip}]`);
 
     if (process.env.NODE_ENV === "development") {
-        console.log(`uuid: ${uuid}`);
+        if (process.env.VAULT__BYPASS_LOGIN === "bypass") {
+            // don't require copy-pasting the uuid
+            res.status(200).json({
+                status: "success",
+                key: uuid,
+            });
+        } else {
+            console.log(`uuid: ${uuid}`);
+        }
+        return;
     } else {
         // TODO: limit total number of emails that can be dispatched by a single ip in an hour
         transporter.sendMail({
