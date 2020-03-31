@@ -2,30 +2,32 @@ dependencies:
   express: 4.17.1
   iconv-lite: 0.5.1
   lazy-universal-dotenv: 3.0.1
-  mariadb: 2.2.0
+  mariadb: 2.3.1
   mysql: 2.18.1
+  nanoid: 3.0.2
+  nanoid-dictionary: 3.0.0
   node-fetch: 2.6.0
-  nodemailer: 6.4.5
+  nodemailer: 6.4.6
   ripgrep-bin: 11.0.1
   sequelize: 5.21.5
   sequelize-cli: 5.5.1
   uuid: 3.4.0
 lockfileVersion: 5.1
 packages:
-  /@babel/runtime/7.8.7:
+  /@babel/runtime/7.9.2:
     dependencies:
       regenerator-runtime: 0.13.5
     dev: false
     resolution:
-      integrity: sha512-+AATMUFppJDw6aiR5NVPHqIQBlV/Pj8wY/EZH+lmvRdUo9xBaz/rF3alAwFJQavvKfeOlPE7oaaDHVbcySbCsg==
+      integrity: sha512-NE2DtOdufG7R5vnfQUTehdTfNycfUANEtCa9PssN9O/xmTzP4E08UI797ixaei6hBEVL9BI/PsdJS5x7mWoB9Q==
   /@types/geojson/7946.0.7:
     dev: false
     resolution:
       integrity: sha512-wE2v81i4C4Ol09RtsWFAqg3BUitWbHSpSlIo+bNdsCJijO9sjme+zm+73ZMCa/qMC8UEERxzGbvmr1cffo2SiQ==
-  /@types/node/13.9.2:
+  /@types/node/13.9.8:
     dev: false
     resolution:
-      integrity: sha512-bnoqK579sAYrQbp73wwglccjJ4sfRdKU7WNEZ5FW4K2U6Kc0/eZ5kvXG0JKsEKFB50zrFmfFt52/cvBbZa7eXg==
+      integrity: sha512-1WgO8hsyHynlx7nhP1kr0OFzsgKz5XDQL+Lfc3b1Q3qIln/n8cKD4m09NJ0+P1Rq7Zgnc7N0+SsMnoD1rEb0kA==
   /abbrev/1.1.1:
     dev: false
     resolution:
@@ -71,13 +73,6 @@ packages:
     dev: false
     resolution:
       integrity: sha1-ml9pkFGx5wczKPKgCJaLZOopVdI=
-  /babel-runtime/6.26.0:
-    dependencies:
-      core-js: 2.6.11
-      regenerator-runtime: 0.11.1
-    dev: false
-    resolution:
-      integrity: sha1-llxwWGaOgrVde/4E/yM3vItWR/4=
   /balanced-match/1.0.0:
     dev: false
     resolution:
@@ -201,12 +196,6 @@ packages:
       node: '>= 0.6'
     resolution:
       integrity: sha512-+Hp8fLp57wnUSt0tY0tHEXh4voZRDnoIrZPqlo3DPiI4y9lwg/jqx+1Om94/W6ZaPDOUbnjOt/99w66zk+l1Xg==
-  /core-js/2.6.11:
-    deprecated: 'core-js@<3 is no longer maintained and not recommended for usage due to the number of issues. Please, upgrade your dependencies to the actual version of core-js@3.'
-    dev: false
-    requiresBuild: true
-    resolution:
-      integrity: sha512-5wjnpaT/3dV+XB4borEsnAYQchn00XSgTAWKDkEqv+K8KevjbzmofK6hfJ9TZIlpj2N0xQpazy7PiRQiWHqzWg==
   /core-js/3.6.4:
     dev: false
     requiresBuild: true
@@ -552,7 +541,7 @@ packages:
       config-chain: 1.1.12
       editorconfig: 0.15.3
       glob: 7.1.6
-      mkdirp: 0.5.3
+      mkdirp: 0.5.4
       nopt: 4.0.3
     dev: false
     hasBin: true
@@ -566,7 +555,7 @@ packages:
       integrity: sha1-h3Gq4HmbZAdrdmQPygWPnBDjPss=
   /lazy-universal-dotenv/3.0.1:
     dependencies:
-      '@babel/runtime': 7.8.7
+      '@babel/runtime': 7.9.2
       app-root-dir: 1.0.2
       core-js: 3.6.4
       dotenv: 8.2.0
@@ -608,10 +597,10 @@ packages:
     dev: false
     resolution:
       integrity: sha1-Jzi9nw089PhEkMVzbEhpmsYyzaM=
-  /mariadb/2.2.0:
+  /mariadb/2.3.1:
     dependencies:
       '@types/geojson': 7946.0.7
-      '@types/node': 13.9.2
+      '@types/node': 13.9.8
       denque: 1.4.1
       iconv-lite: 0.5.1
       long: 4.0.0
@@ -620,7 +609,7 @@ packages:
     engines:
       node: '>= 6.0'
     resolution:
-      integrity: sha512-YXPF11u4NVgm3FLetJoAbq9Fb0a/RSwNrDHdmAqpqgYErWAOes/IVbOfvWPWZQ0hI88j/81f15AGJZAVuR3bGg==
+      integrity: sha512-suv+ygoiS+tQSKmxgzJsGV9R+USN8g6Ql+GuMo9k7alD6FxOT/lwebLHy63/7yPZfVtlyAitK1tPd7ZoFhN/Sg==
   /media-typer/0.3.0:
     dev: false
     engines:
@@ -681,14 +670,14 @@ packages:
     dev: false
     resolution:
       integrity: sha512-FM9nNUYrRBAELZQT3xeZQ7fmMOBg6nWNmJKTcgsJeaLstP/UODVpGsr5OhXhhXg6f+qtJ8uiZ+PUxkDWcgIXLw==
-  /mkdirp/0.5.3:
+  /mkdirp/0.5.4:
     dependencies:
       minimist: 1.2.5
     deprecated: Legacy versions of mkdirp are no longer supported. Please update to mkdirp 1.x. (Note that the API surface has changed to use Promises in 1.x.)
     dev: false
     hasBin: true
     resolution:
-      integrity: sha512-P+2gwrFqx8lhew375MQHHeTlY8AuOJSrGf0R5ddkEndUkmwpgUob/vQuBD1V22/Cw1/lJr4x+EjllSezBThzBg==
+      integrity: sha512-iG9AK/dJLtJ0XNgTuDbSyNS3zECqDlAhnQW4CsNxBG3LQJBbHmRX1egw39DmtOdCAqY+dKXV+sgPgilNWUKMVw==
   /moment-timezone/0.5.28:
     dependencies:
       moment: 2.24.0
@@ -722,6 +711,14 @@ packages:
       node: '>= 0.6'
     resolution:
       integrity: sha512-Bca+gk2YWmqp2Uf6k5NFEurwY/0td0cpebAucFpY/3jhrwrVGuxU2uQFCHjU19SJfje0yQvi+rVWdq78hR5lig==
+  /nanoid-dictionary/3.0.0:
+    dev: false
+    resolution:
+      integrity: sha512-dYCOXltfavrN7LGYt3DEAGl6Ya3UcnypXPsYR7HZ5k1eIesakVm+zlfv7V75uSe+Zhyxvyhg9yEbPl8qMx1dwA==
+  /nanoid/3.0.2:
+    dev: false
+    resolution:
+      integrity: sha512-WOjyy/xu3199NlQiQWlx7VbspSFlGtOxa1bRX9ebmXOnp1fje4bJfjPs1wLQ8jZbJUfD+yceJmw879ZSaVJkdQ==
   /negotiator/0.6.2:
     dev: false
     engines:
@@ -742,13 +739,13 @@ packages:
       node: 4.x || >=6.0.0
     resolution:
       integrity: sha512-8dG4H5ujfvFiqDmVu9fQ5bOHUC15JMjMY/Zumv26oOvvVJjM67KF8koCWIabKQ1GJIa9r2mMZscBq/TbdOcmNA==
-  /nodemailer/6.4.5:
+  /nodemailer/6.4.6:
     dev: false
     engines:
       node: '>=6.0.0'
     requiresBuild: true
     resolution:
-      integrity: sha512-NH7aNVQyZLAvGr2+EOto7znvz+qJ02Cb/xpou98ApUt5tEAUSVUxhvHvgV/8I5dhjKTYqUw0nasoKzLNBJKrDQ==
+      integrity: sha512-/kJ+FYVEm2HuUlw87hjSqTss+GU35D4giOpdSfGp7DO+5h6RlJj7R94YaYHOkoxu1CSaM0d3WRBtCzwXrY6MKA==
   /nopt/4.0.3:
     dependencies:
       abbrev: 1.1.1
@@ -894,10 +891,6 @@ packages:
     dev: false
     resolution:
       integrity: sha512-Ebho8K4jIbHAxnuxi7o42OrZgF/ZTNcsZj6nRKyUmkhLFq8CHItp/fy6hQZuZmP/n3yZ9VBUbp4zz/mX8hmYPw==
-  /regenerator-runtime/0.11.1:
-    dev: false
-    resolution:
-      integrity: sha512-MguG95oij0fC3QV3URf4V2SDYGJhJnJGqvIIgdECeODCT98wSWDAJ94SSuVpYQUoTcGUIL6L4yNB7j1DFFHSBg==
   /regenerator-runtime/0.13.5:
     dev: false
     resolution:
@@ -976,7 +969,7 @@ packages:
       js-beautify: 1.10.3
       lodash: 4.17.15
       resolve: 1.15.1
-      umzug: 2.2.0
+      umzug: 2.3.0
       yargs: 13.3.2
     dev: false
     engines:
@@ -1109,15 +1102,14 @@ packages:
     dev: false
     resolution:
       integrity: sha512-KBt58xCHry4Cejnc2ISQAF7QY+ORngsWfxezO68+12hKV6lQY8P/psIkcbjeHWn7MqcgciWJyCCevFMJdIXpow==
-  /umzug/2.2.0:
+  /umzug/2.3.0:
     dependencies:
-      babel-runtime: 6.26.0
       bluebird: 3.7.2
     dev: false
     engines:
       node: '>=6.0.0'
     resolution:
-      integrity: sha512-xZLW76ax70pND9bx3wqwb8zqkFGzZIK8dIHD9WdNy/CrNfjWcwQgQkGCuUqcuwEBvUm+g07z+qWvY+pxDmMEEw==
+      integrity: sha512-Z274K+e8goZK8QJxmbRPhl89HPO1K+ORFtm6rySPhFKfKc5GHhqdzD0SGhSWHkzoXasqJuItdhorSvY7/Cgflw==
   /universalify/0.1.2:
     dev: false
     engines:
@@ -1163,7 +1155,7 @@ packages:
       integrity: sha1-2e8H3Od7mQK4o6j6SzHD4/fm6Ho=
   /wkx/0.4.8:
     dependencies:
-      '@types/node': 13.9.2
+      '@types/node': 13.9.8
     dev: false
     resolution:
       integrity: sha512-ikPXMM9IR/gy/LwiOSqWlSL3X/J5uk9EO2hHNRXS41eTLXaUFEVw9fn/593jW/tE5tedNg8YjT5HkCa4FqQZyQ==
@@ -1215,10 +1207,12 @@ specifiers:
   express: ^4.17.1
   iconv-lite: ^0.5.1
   lazy-universal-dotenv: ^3.0.1
-  mariadb: ^2.2.0
+  mariadb: ^2.3.1
   mysql: ^2.18.1
+  nanoid: ^3.0.2
+  nanoid-dictionary: ^3.0.0
   node-fetch: ^2.6.0
-  nodemailer: ^6.4.5
+  nodemailer: ^6.4.6
   ripgrep-bin: ^11.0.1
   sequelize: ^5.21.5
   sequelize-cli: ^5.5.1

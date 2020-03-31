@@ -1,9 +1,9 @@
 "use strict";
-const uuidv4 = require("uuid/v4");
 const nodemailer = require("nodemailer");
 const Claim = require("../utils/claim.js");
 const validate = require("../utils/validate.js");
 const Identity = require("../types/Identity.js");
+const Session = require("../types/Session.js");
 
 let transporter = nodemailer.createTransport({
     sendmail: true,
@@ -181,7 +181,7 @@ const add_identity = async (req, res, next) => {
 
     let uuid;
     do { // avoid collisions
-        uuid =  uuidv4();
+        uuid = await Session.generateToken();
     } while (req.app.locals.session.get(uuid));
 
     req.app.locals.identity_pending.set(uuid, {

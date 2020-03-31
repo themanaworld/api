@@ -1,7 +1,14 @@
-const uuidv4 = require("uuid/v4");
+const nanoid = require("nanoid");
+const dictionaries = require("nanoid-dictionary");
 const Identity = require("./Identity.js");
 const EvolAccount = require("./EvolAccount.js");
 const LegacyAccount = require("./LegacyAccount.js");
+
+/** custom nanoid generators */
+const newToken = {
+    n23: nanoid.customAlphabet(dictionaries.nolookalikes, 23),
+    n36: () => nanoid.nanoid(36),
+};
 
 /**
  * holds a cache of all the user data fetched from SQL
@@ -72,18 +79,26 @@ module.exports = class Session {
     constructor (ip, email) {
         this.ip = ip;
         this.email = email.toLowerCase();
-        this.secret = uuidv4();
+        this.secret = newToken.n36();
+    }
+
+    /**
+     * generate a secure unique token that is shared with the end-user.
+     * excludes lookalike characters but is still stronger than uuidv4
+     * @param {number} - the token length
+     */
+    static async generateToken () {
+        return newToken.n23();
     }
 
     /**
      * serialize for sending over the network
-     * @param {*} key
      */
-    toJSON (key) {
+    toJSON () {
         return {
             expires: this.expires,
             identity: this.identity.id,
-        }
+        };
     }
 
     /**

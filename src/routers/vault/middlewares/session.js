@@ -1,5 +1,4 @@
 "use strict";
-const uuidv4 = require("uuid/v4");
 const nodemailer = require("nodemailer");
 const Claim = require("../utils/claim.js");
 const Session = require("../types/Session.js");
@@ -221,7 +220,7 @@ const auth_session = async (req, res) => {
     }
 
     // immediately change the session uuid
-    const new_uuid = uuidv4();
+    const new_uuid = await Session.generateToken();
     req.app.locals.session.set(new_uuid, session);
     req.app.locals.session.delete(token); // revoke the old uuid
 
@@ -253,7 +252,7 @@ const new_session = async (req, res, next) => {
             // account creation request
             let uuid;
             do { // avoid collisions
-                uuid =  uuidv4();
+                uuid = await Session.generateToken();
             } while (req.app.locals.session.get(uuid));
 
             const session = new Session(req.ip, email);
@@ -344,7 +343,7 @@ const new_session = async (req, res, next) => {
 
             let uuid;
             do { // avoid collisions
-                uuid =  uuidv4();
+                uuid = await Session.generateToken();
             } while (req.app.locals.session.get(uuid));
 
             const session = new Session(req.ip, email);

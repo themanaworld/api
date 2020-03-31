@@ -1,5 +1,6 @@
 "use strict";
 const Session = require("../types/Session.js");
+const nolookalikes = require("nanoid-dictionary/nolookalikes");
 
 /** thrown when the user attempts to bypass security measures */
 class BypassAttempt extends Error {};
@@ -10,6 +11,10 @@ class ValidationError extends Error {};
 const regexes = {
     /** a Universally Unique Identifier */
     uuid: /^[0-9a-f]{8}(?:\-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i,
+    /** nolookalikes nanoid */
+    nano23: new RegExp(`^[${nolookalikes}]{23}$`),
+    /** nanoid */
+    nano36: /^[A-Za-z0-9_-]{36}$/,
     /** tmwa password */
     any23: /^[^\s][^\t\r\n]{2,21}[^\s]$/,
     /** hercules password */
@@ -79,7 +84,7 @@ const get_prop = (req, prop, regex = null) => {
 const get_secret = (req, res) => {
     const token = req.get("X-VAULT-TOKEN") || "";
 
-    if (!token.match(regexes.uuid)) {
+    if (!token.match(regexes.nano36)) {
         res.status(400).json({
             status: "error",
             error: "missing secret key",
@@ -101,7 +106,7 @@ const get_secret = (req, res) => {
 const get_raw_session = (req, res) => {
     const token = String(req.get("X-VAULT-SESSION") || "");
 
-    if (!token.match(regexes.uuid)) {
+    if (!token.match(regexes.nano23)) {
         res.status(400).json({
             status: "error",
             error: "missing session key",
