@@ -18,7 +18,7 @@ const regexes = {
     /** tmwa password */
     any23: /^[^\s][^\t\r\n]{2,21}[^\s]$/,
     /** hercules password */
-    any30: /^[^\s][^\t\r\n]{6,28}[^\s]$/,
+    any30: /^[^\s][^\t\r\n]{6,21}[^\s]$/, // this could be increased if we modify manaplus
     /** username */
     alnum23: /^\w{4,23}$/i,
     /** tmwa/hercules GID */
