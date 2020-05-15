@@ -12,6 +12,8 @@ module.exports = class Char {
     baseLevel = 1;
     /** gender of the char */
     gender = "N";
+    /** when the char was created */
+    creationTime = 0;
 
     constructor (acc, id, name) {
         this.account = acc;

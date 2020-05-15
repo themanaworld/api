@@ -19,7 +19,7 @@ const models = {
         //"storage",
         //"global_acc_reg",
         //"acc_reg",
-        //"char_reg",
+        "char_reg",
         //"party",
     ],
     evol: [

@@ -6,6 +6,7 @@ const LegacyChar = require("../../types/LegacyChar.js");
 const EvolAccount = require("../../types/EvolAccount.js");
 const EvolChar = require("../../types/EvolChar.js");
 const validate = require("../../utils/validate.js");
+const { Op } = require("sequelize");
 
 const get_accounts = async (req, res, next) => {
     let session;
@@ -136,6 +137,27 @@ const claim_by_password = async (req, res, next) => {
         char.baseLevel = char_.baseLevel;
         char.gender = char_.sex;
 
+        const char_vars = await req.app.locals.legacy.char_reg.findAll({
+            where: {
+                charId: char_.charId,
+                [Op.or]: [
+                    {name: "TUT_var"},
+                    {name: "BOSS_POINTS"},
+                ],
+            },
+            limit: 2, // for now we only use these 2 vars ^
+        });
+
+        for (const var_ of char_vars) {
+            if (var_.name === "TUT_var") {
+                char.creationTime = var_.value > 0xFF ? var_.value : 0;
+            } else if (var_.name === "BOSS_POINTS") {
+                char.bossPoints = Math.max(0, var_.value);
+            }
+
+            // in the future maybe here set the vars in a Map<name, value>
+        }
+
         account.chars.push(char);
     }
 
@@ -226,11 +248,23 @@ const migrate = async (req, res, next) => {
     });
 
     // store the vault account id as a global account var
-    await req.app.locals.evol.global_acc_reg_num_db.create({
-        accountId: evol_acc.accountId,
-        key: "##VAULT", index: 0,
-        value: session.vault,
-    });
+    await req.app.locals.evol.global_acc_reg_num_db.bulkCreate([
+        {
+            accountId: evol_acc.accountId,
+            key: "##VAULT", index: 0,
+            value: session.vault,
+        },
+        {
+            accountId: evol_acc.accountId,
+            key: "##LEGACY", index: 0,
+            value: legacy.accountId, // the max value uses only 22 bits so we have some room
+        },
+        {
+            accountId: evol_acc.accountId,
+            key: "##LEGACY", index: 1,
+            value: Math.ceil(Date.now() / 1000),
+        },
+    ]);
 
     req.app.locals.vault.migration_log.create({
         vaultId: session.vault,
@@ -282,14 +316,24 @@ const migrate = async (req, res, next) => {
             continue;
         }
 
-        // update the Legacy flags:
-        // for now we're only using a single bit but this can be expanded when
-        // we need it in the future
-        await req.app.locals.evol.char_reg_num_db.create({
-            charId: evol_char.charId,
-            key: "LEGACY", index: 0,
-            value: 0b00000000_00000000_00000000_00000001, // set the Legacy bit
-        });
+        // set the legacy variables
+        await req.app.locals.evol.char_reg_num_db.bulkCreate([
+            {
+                charId: evol_char.charId,
+                key: "LEGACY", index: 0,
+                value: char.charId,
+            },
+            {
+                charId: evol_char.charId,
+                key: "LEGACY", index: 1,
+                value: (char.baseLevel & 0xFF) | ((char.bossPoints & 0x7FFFFF) << 8),
+            },
+            {
+                charId: evol_char.charId,
+                key: "LEGACY", index: 2,
+                value: char.creationTime,
+            },
+        ]);
 
         // remove the name reservation
         req.app.locals.evol.char_reservation.destroy({

@@ -1,3 +1,5 @@
+const Char = require("./Char.js");
+
 /**
  * represents a generic game account
  */
@@ -8,7 +10,9 @@ module.exports = class GameAccount {
     userid = "";
     /** the email address associated with the account */
     email = null;
-    /** Char[] */
+    /** game characters
+     * @type {Char[]}
+     */
     chars = [];
     /** the last time the account logged in */
     lastLogin = null;

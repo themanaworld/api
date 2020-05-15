@@ -1,4 +1,5 @@
 const GameAccount = require("./GameAccount.js");
+const EvolChar = require("./EvolChar.js");
 
 /**
  * represents an Evol game account
@@ -8,6 +9,10 @@ module.exports = class EvolAccount extends GameAccount {
     legacyId = null;
     /** reference to the LegacyAccount */
     legacyAccount = null;
+    /** evol game characters
+     * @type {EvolChar[]}
+     */
+    chars = [];
 
     /**
      * serialize for sending over the network

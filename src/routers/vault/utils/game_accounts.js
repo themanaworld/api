@@ -2,6 +2,7 @@ const LegacyAccount = require("../types/LegacyAccount.js");
 const LegacyChar = require("../types/LegacyChar.js");
 const EvolAccount = require("../types/EvolAccount.js");
 const EvolChar = require("../types/EvolChar.js");
+const { Op } = require("sequelize");
 
 /**
  * fetch the legacy game accounts and cache in the Session
@@ -37,6 +38,27 @@ const get_legacy_accounts = async (req, session) => {
             char_.baseLevel = char.baseLevel;
             char_.gender = char.sex;
             char_.revoltId = char.revoltId;
+
+            const char_vars = await req.app.locals.legacy.char_reg.findAll({
+                where: {
+                    charId: char.charId,
+                    [Op.or]: [
+                        {name: "TUT_var"},
+                        {name: "BOSS_POINTS"},
+                    ],
+                },
+                limit: 2, // for now we only use these 2 vars ^
+            });
+
+            for (const var_ of char_vars) {
+                if (var_.name === "TUT_var") {
+                    char_.creationTime = var_.value > 0xFF ? var_.value : 0;
+                } else if (var_.name === "BOSS_POINTS") {
+                    char_.bossPoints = Math.max(0, var_.value);
+                }
+
+                // in the future maybe here set the vars in a Map<name, value>
+            }
 
             account.chars.push(char_);
         }

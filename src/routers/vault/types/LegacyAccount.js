@@ -1,4 +1,5 @@
 const GameAccount = require("./GameAccount.js");
+const LegacyChar = require("./LegacyChar.js");
 
 /**
  * represents a Legacy game account
@@ -8,6 +9,10 @@ module.exports = class LegacyAccount extends GameAccount {
     revoltId = null;
     /** reference to the EvolAccount of the target evol account */
     revoltAccount = null;
+    /** Legacy game characters
+     * @type {LegacyChar[]}
+     */
+    chars = [];
 
     /**
      * serialize for sending over the network

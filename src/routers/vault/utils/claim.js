@@ -64,6 +64,27 @@ const claim_accounts = async (req, email, vault_id, session = null) => {
                 legacy_char.baseLevel = char.baseLevel;
                 legacy_char.gender = char.sex;
 
+                const char_vars = await req.app.locals.legacy.char_reg.findAll({
+                    where: {
+                        charId: char.charId,
+                        [Op.or]: [
+                            {name: "TUT_var"},
+                            {name: "BOSS_POINTS"},
+                        ],
+                    },
+                    limit: 2, // for now we only use these 2 vars ^
+                });
+
+                for (const var_ of char_vars) {
+                    if (var_.name === "TUT_var") {
+                        legacy_char.creationTime = var_.value > 0xFF ? var_.value : 0;
+                    } else if (var_.name === "BOSS_POINTS") {
+                        legacy_char.bossPoints = Math.max(0, var_.value);
+                    }
+
+                    // in the future maybe here set the vars in a Map<name, value>
+                }
+
                 legacy_account.chars.push(legacy_char);
             }
 

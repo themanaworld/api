@@ -8,6 +8,8 @@ module.exports = class LegacyChar extends Char {
     revoltId = null;
     /** reference to the EvolChar */
     revoltChar = null;
+    /** boss points */
+    bossPoints = 0;
 
     /**
      * serialize for sending over the network
