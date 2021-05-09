@@ -22,6 +22,11 @@ class Identity extends Model {
      * the Vault user id
      * @type {number}
      */
+    //totp;
+    /**
+     * TOTP 16-chars base64 secret
+     * @type {string}
+     */
     //userId;
 
     /**
