@@ -23,6 +23,12 @@ module.exports = {
             defaultValue: false,
             allowNull: false,
         },
+        allow2FA: {
+            field: "allow_2fa_login",
+            type: Sequelize.BOOLEAN,
+            defaultValue: false,
+            allowNull: false,
+        },
         creationDate: {
             type: Sequelize.DATE,
             allowNull: false,

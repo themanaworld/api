@@ -28,6 +28,7 @@ const update_account = async (req, res, next) => {
         primary:  +validate.get_prop(req, "primary"),
         allow:     validate.get_prop(req, "allow") === "true",
         strict:    validate.get_prop(req, "strict") === "true",
+        2fa:       validate.get_prop(req, "2fa") === "true",
     };
 
     const update_fields = {};
@@ -62,6 +63,10 @@ const update_account = async (req, res, next) => {
         // update allow non-primary
         update_fields.strictIPCheck = data.strict;
     }
+    if (session.allow2FA !== data.2fa) {
+        // update allow 2FA auth
+        update_fields.allow2FA = data.2fa;
+    }
 
     // update SQL
     if (Object.keys(update_fields).length) {
@@ -73,6 +78,7 @@ const update_account = async (req, res, next) => {
     // now update our cache
     session.allowNonPrimary = data.allow;
     session.strictIPCheck = data.strict;
+    session.allow2FA = data.allow2FA;
 
     for (const ident of session.identities) {
         if (ident.id === session.primaryIdentity.id) {
