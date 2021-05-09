@@ -24,7 +24,12 @@ class Identity extends Model {
      */
     //totp;
     /**
-     * TOTP 16-chars base64 secret
+     * TOTP 16-chars base64 secret (optional)
+     * @type {string}
+     */
+    //pass;
+    /**
+     * Optional PBKDF2 cryptographic secret to use with 2FA.
      * @type {string}
      */
     //userId;
