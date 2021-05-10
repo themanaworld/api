@@ -17,7 +17,7 @@ module.exports = {
             allowNull: false,
         },
         totp: {
-            type: Sequelize.STRING(16),
+            type: Sequelize.STRING(32),
             allowNull: true,
         },
         pass: {
