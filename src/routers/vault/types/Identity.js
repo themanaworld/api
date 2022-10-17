@@ -22,6 +22,16 @@ class Identity extends Model {
      * the Vault user id
      * @type {number}
      */
+    //totp;
+    /**
+     * TOTP 16-chars base64 secret (optional)
+     * @type {string}
+     */
+    //pass;
+    /**
+     * Optional PBKDF2 cryptographic secret to use with 2FA.
+     * @type {string}
+     */
     //userId;
 
     /**

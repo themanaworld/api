@@ -16,6 +16,14 @@ module.exports = {
             type: Sequelize.STRING(320),
             allowNull: false,
         },
+        totp: {
+            type: Sequelize.STRING(32),
+            allowNull: true,
+        },
+        pass: {
+            type: Sequelize.STRING(128),
+            allowNull: true,
+        },
         addedDate: {
             type: Sequelize.DATE,
             allowNull: false,
