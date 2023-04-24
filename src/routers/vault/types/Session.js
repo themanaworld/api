@@ -75,6 +75,10 @@ module.exports = class Session {
      * refuse to authenticate a session with a different IP
      */
     strictIPCheck = true;
+    /**
+     * allow to authenticate a session with 2FA + PBKDF2 password
+     */
+    allow2FA = false;
 
     constructor (ip, email) {
         this.ip = ip;
@@ -109,6 +113,7 @@ module.exports = class Session {
             primaryIdentity: this.primaryIdentity.id,
             allowNonPrimary: this.allowNonPrimary,
             strictIPCheck: this.strictIPCheck,
+            allow2FA: this.allow2FA,
             vaultId: this.vault,
         };
     }
