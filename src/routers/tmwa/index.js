@@ -34,7 +34,7 @@ module.exports = exports = class TMWA {
 
 const tmwa_poll = (_this) => {
     fs.readFile("./online.txt", "utf8", (err, data) => {
-        const lines = data.split("\n");
+        const lines = (data||'').split("\n");
 
         if (err || lines.length < 2) {
             console.error("TMWA: encountered an error while retrieving online.txt", err);
