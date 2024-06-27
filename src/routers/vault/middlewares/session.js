@@ -156,6 +156,7 @@ const auth_session = async (req, res) => {
         session.primaryIdentity = ident;
         session.allowNonPrimary = user.allowNonPrimary;
         session.strictIPCheck = user.strictIPCheck;
+        session.allow2FA = user.allow2FA;
         session.identities.push(ident);
     } else {
         if (session.identity !== session.primaryIdentity && !session.allowNonPrimary) {
@@ -351,6 +352,7 @@ const new_session = async (req, res, next) => {
             session.primaryIdentity = primary;
             session.allowNonPrimary = account.allowNonPrimary;
             session.strictIPCheck = account.strictIPCheck;
+            session.allow2FA = account.allow2FA;
             session.identity = identity;
             req.app.locals.session.set(uuid, session);
 
