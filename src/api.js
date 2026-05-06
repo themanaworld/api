@@ -154,4 +154,12 @@ api.use((req, res, next) => {
 api.set("trust proxy", "loopback"); // only allow localhost to communicate with the API
 api.disable("x-powered-by"); // we don't need this header
 console.log(`Running in ${process.env.NODE_ENV} mode`);
-api.listen(process.env.PORT, () => console.info(`Listening on port ${process.env.PORT}`));
+// Bind loopback by default. Express's app.listen(port) without a
+// host argument binds 0.0.0.0, exposing the API to anyone who can
+// reach the port -- but our deploy puts Caddy in front and trusts
+// "loopback" via app.set above, so binding all interfaces just
+// invites direct-to-Node bypasses of the CORS/TLS layer. Set HOST=
+// in the env to override (e.g. HOST=0.0.0.0 for dev where you want
+// to hit the Node service from another machine).
+const host = process.env.HOST || "127.0.0.1";
+api.listen(process.env.PORT, host, () => console.info(`Listening on ${host}:${process.env.PORT}`));
